@@ -2,6 +2,17 @@ from django.db import models
 from django.contrib.auth.models import User
 # Create your models here.
 
+class User(models.Model):
+    user_id = models.CharField(max_length=25, primary_key=True)
+    user_name = models.CharField(max_length=255,null=False)
+    password = models.CharField(max_length=255,null=False)
+    email = models.EmailField(unique=True,null=False)
+    mobile_number = models.CharField(max_length=13, unique=True,null=False)
+    address = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.user_name
+    
 class Seller(models.Model):
     seller_id = models.CharField(max_length=25,primary_key=True)
     seller_name = models.CharField(max_length=50,null=False)
@@ -15,8 +26,8 @@ class Product(models.Model):
     product_name = models.CharField(max_length=50,null=False)
     product_type = models.CharField(max_length=50,blank=False,null=False)
     description = models.CharField(max_length=255,blank=True,null=True)
-    category = models.CharField(max_length=50, blank=True, null=True)
-    price = models.DecimalField(max_digits=10,decimal_places=2)
+    category = models.CharField(max_length=50, blank=True,null=True)
+    price = models.DecimalField(max_digits=10,decimal_places=2,null=False)
     quantity = models.IntegerField(null=False)
     review = models.TextField(blank=True,null=True)
 
@@ -27,10 +38,10 @@ class Orders(models.Model):
     order_id = models.CharField(max_length=25,primary_key=True)
     user = models.ForeignKey(User,on_delete=models.CASCADE)
     product = models.ForeignKey(Product,on_delete=models.CASCADE)
-    order_address = models.TextField()
-    price_amt = models.DecimalField(max_digits=10,decimal_places=2)
-    order_date = models.DateTimeField()
-    order_status = models.CharField(max_length=50)
+    order_address = models.TextField(null=False)
+    price_amt = models.DecimalField(max_digits=10,decimal_places=2,null=False)
+    order_date = models.DateTimeField(null=False)
+    order_status = models.CharField(max_length=50,null=False)
 
     def __str__(self):
         return f"Order {self.order_id}"
@@ -38,9 +49,9 @@ class Orders(models.Model):
 class Delivery(models.Model):
     delivery_id = models.CharField(max_length=25,primary_key=True)
     order = models.ForeignKey(Orders,on_delete=models.CASCADE)
-    courier_service = models.CharField(max_length=50)
-    tracking_id = models.CharField(max_length=25,unique=True)
-    delivery_status = models.CharField(max_length=50)
+    courier_service = models.CharField(max_length=50,null=False)
+    tracking_id = models.CharField(max_length=25,unique=True,null=False)
+    delivery_status = models.CharField(max_length=50,null=False)
 
     def __str__(self):
         return f"Delivery {self.delivery_id}"
@@ -55,7 +66,7 @@ class Tracking(models.Model):
 class Inventory(models.Model):
     inventory_id = models.CharField(max_length=25, primary_key=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    volume = models.CharField(max_length=50)
+    volume = models.CharField(max_length=50,null=False)
     location = models.CharField(max_length=50, blank=True, null=True)
 
     def __str__(self):
@@ -64,9 +75,9 @@ class Inventory(models.Model):
 class Transaction(models.Model):
     transaction_id = models.CharField(max_length=25, primary_key=True)
     order = models.ForeignKey(Orders, on_delete=models.CASCADE)
-    transaction_amt = models.DecimalField(max_digits=10, decimal_places=2)
-    account_details = models.CharField(max_length=255)
-    mode_of_payment = models.CharField(max_length=50)
+    transaction_amt = models.DecimalField(max_digits=10, decimal_places=2,null=False)
+    account_details = models.CharField(max_length=255,null=False)
+    mode_of_payment = models.CharField(max_length=50,null=False)
 
     def __str__(self):
         return f"Transaction {self.transaction_id} for Order {self.order.order_id}"
@@ -80,9 +91,9 @@ class Bidding(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    bid_time = models.DateTimeField()
-    bid_amt = models.DecimalField(max_digits=10, decimal_places=2)
-    bid_status = models.CharField(max_length=50, choices=BID_STATUS_CHOICES)
+    bid_time = models.DateTimeField(null=False)
+    bid_amt = models.DecimalField(max_digits=10, decimal_places=2,null=False)
+    bid_status = models.CharField(max_length=50, choices=BID_STATUS_CHOICES,null=False)
     initial_bid_amt = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
 
     class Meta:
