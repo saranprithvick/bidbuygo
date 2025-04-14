@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product List</title>
+</head>
+<body>
+    <h1>Available Products</h1>
+    <ul>
+        {% for product in products %}
+            <li>
+                <a href="{% url 'product_detail' product.product_id %}">{{ product.product_name }}</a> - ₹{{ product.price }}
+            </li>
+        {% empty %}
+            <li>No products available.</li>
+        {% endfor %}
+    </ul>
+    <a href="{% url 'home' %}">Back to Home</a>
+</body>
+</html>

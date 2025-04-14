@@ -9,6 +9,10 @@ class Seller(models.Model):
     def __str__(self):
         return self.seller_name
     
+    class Meta:
+        verbose_name = "Seller"
+        verbose_name_plural = "Seller"
+    
 class Product(models.Model):
     product_id = models.CharField(max_length=25,primary_key=True)
     seller = models.ForeignKey(Seller,on_delete=models.CASCADE)
@@ -23,6 +27,10 @@ class Product(models.Model):
     def __str__(self):
         return self.product_name
     
+    class Meta:
+        verbose_name = "Product"
+        verbose_name_plural = "Product"
+    
 class Orders(models.Model):
     order_id = models.CharField(max_length=25,primary_key=True)
     user = models.ForeignKey(User,on_delete=models.CASCADE)
@@ -35,6 +43,10 @@ class Orders(models.Model):
     def __str__(self):
         return f"Order {self.order_id}"
     
+    class Meta:
+        verbose_name = "Order"
+        verbose_name_plural = "Order"
+    
 class Delivery(models.Model):
     delivery_id = models.CharField(max_length=25,primary_key=True)
     order = models.ForeignKey(Orders,on_delete=models.CASCADE)
@@ -45,12 +57,20 @@ class Delivery(models.Model):
     def __str__(self):
         return f"Delivery {self.delivery_id}"
     
+    class Meta:
+        verbose_name = "Delivery"
+        verbose_name_plural = "Delivery"
+    
 class Tracking(models.Model):
     tracking_id = models.CharField(max_length=25, primary_key=True)
     delivery = models.ForeignKey(Delivery, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.tracking_id
+    
+    class Meta:
+        verbose_name = "Tracking"
+        verbose_name_plural = "Tracking"
     
 class Inventory(models.Model):
     inventory_id = models.CharField(max_length=25, primary_key=True)
@@ -61,6 +81,10 @@ class Inventory(models.Model):
     def __str__(self):
         return f"Inventory for {self.product.product_name}"
     
+    class Meta:
+        verbose_name = "Inventory"
+        verbose_name_plural = "Inventory"
+    
 class Transaction(models.Model):
     transaction_id = models.CharField(max_length=25, primary_key=True)
     order = models.ForeignKey(Orders, on_delete=models.CASCADE)
@@ -70,6 +94,10 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"Transaction {self.transaction_id} for Order {self.order.order_id}"
+    
+    class Meta:
+        verbose_name = "Transaction"
+        verbose_name_plural = "Transaction"
     
 class Bidding(models.Model):
     BID_STATUS_CHOICES = [
@@ -93,6 +121,10 @@ class Bidding(models.Model):
 
     def __str__(self):
         return f"{self.user.username} bid {self.bid_amt} on {self.product.product_name}"
+    
+    class Meta:
+        verbose_name = "Bidding"
+        verbose_name_plural = "Bidding"
     
 
     
