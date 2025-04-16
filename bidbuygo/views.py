@@ -84,6 +84,6 @@ def complete_payment(request, order_id):
         order.order_status = 'Paid'
         order.save()
 
-        return redirect('order_list') 
+        return redirect('order_list')
 
     return render(request, 'bidbuygo/complete_payment.html', {'order': order})
