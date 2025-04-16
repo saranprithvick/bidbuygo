@@ -1,0 +1,10 @@
+<h2>Your Orders</h2>
+<ul>
+  {% for order in orders %}
+    <li>
+      Order ID: {{ order.order_id }} | Product: {{ order.product.name }} | Status: {{ order.order_status }}
+    </li>
+  {% empty %}
+    <li>No orders yet.</li>
+  {% endfor %}
+</ul>

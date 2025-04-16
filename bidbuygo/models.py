@@ -12,6 +12,7 @@ class Seller(models.Model):
     class Meta:
         verbose_name = "Seller"
         verbose_name_plural = "Seller"
+        db_table = 'SELLER'
     
 class Product(models.Model):
     product_id = models.CharField(max_length=25,primary_key=True)
@@ -30,6 +31,7 @@ class Product(models.Model):
     class Meta:
         verbose_name = "Product"
         verbose_name_plural = "Product"
+        db_table = 'PRODUCT'
     
 class Orders(models.Model):
     order_id = models.CharField(max_length=25,primary_key=True)
@@ -41,11 +43,12 @@ class Orders(models.Model):
     order_status = models.CharField(max_length=50)
 
     def __str__(self):
-        return f"Order {self.order_id}"
+        return f"Order {self.order_id} by {self.user.username}"
     
     class Meta:
         verbose_name = "Order"
-        verbose_name_plural = "Order"
+        verbose_name_plural = "Orders"
+        db_table = 'ORDERS'
     
 class Delivery(models.Model):
     delivery_id = models.CharField(max_length=25,primary_key=True)
@@ -60,6 +63,7 @@ class Delivery(models.Model):
     class Meta:
         verbose_name = "Delivery"
         verbose_name_plural = "Delivery"
+        db_table = 'DELIVERY'
     
 class Tracking(models.Model):
     tracking_id = models.CharField(max_length=25, primary_key=True)
@@ -84,6 +88,7 @@ class Inventory(models.Model):
     class Meta:
         verbose_name = "Inventory"
         verbose_name_plural = "Inventory"
+        db_table = 'INVENTORY'
     
 class Transaction(models.Model):
     transaction_id = models.CharField(max_length=25, primary_key=True)
@@ -98,6 +103,7 @@ class Transaction(models.Model):
     class Meta:
         verbose_name = "Transaction"
         verbose_name_plural = "Transaction"
+        db_table = 'TRANSACTION'
     
 class Bidding(models.Model):
     BID_STATUS_CHOICES = [
@@ -125,6 +131,7 @@ class Bidding(models.Model):
     class Meta:
         verbose_name = "Bidding"
         verbose_name_plural = "Bidding"
+        db_table = 'BIDDING'
     
 
     
