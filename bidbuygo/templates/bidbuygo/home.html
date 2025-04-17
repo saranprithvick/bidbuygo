@@ -1,15 +1,50 @@
-
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BidBuyGo Home</title>
+    <title>BidBuyGo | Home</title>
 </head>
 <body>
-    <h1>Welcome to BidBuyGo</h1>
-    <p>Your go-to platform for buying, selling, and bidding on new and refurbished products.</p>
-    <a href="{% url 'product_list' %}">Browse Products</a>
-    <a href="{% url 'user_login' %}">Login</a> | <a href="{% url 'user_registration' %}">Register</a>
+    <header class="navbar">
+        <h1>BidBuyGo</h1>
+        <nav>
+            <ul>
+                <li><a href="{% url 'product_list' %}">Browse Products</a></li>
+                {% if user.is_authenticated %}
+                    <li><a href="{% url 'order_list' %}">My Orders</a></li>
+                    <li><a href="{% url 'logout' %}">Logout</a></li>
+                {% else %}
+                    <li><a href="{% url 'user_registration' %}">Register</a></li>
+                    <li><a href="{% url 'user_login' %}">Login</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <h2>Welcome to BidBuyGo</h2>
+        <p>Your all-in-one platform to Buy, Sell & Bid on amazing products!</p>
+        <a href="{% url 'product_list' %}" class="cta-button">Start Exploring</a>
+    </section>
+
+    <section class="features">
+        <div class="feature-card">
+            <h3>Buy Smart</h3>
+            <p>Shop new and refurbished products at the best prices.</p>
+        </div>
+        <div class="feature-card">
+            <h3>Sell Easily</h3>
+            <p>Upload and manage your own products via the Thrift Store.</p>
+        </div>
+        <div class="feature-card">
+            <h3>Bid & Win</h3>
+            <p>Compete with others and grab products at your price.</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2025 BidBuyGo. All rights reserved.</p>
+    </footer>
 </body>
 </html>
