@@ -1,0 +1,62 @@
+{% extends 'bidbuygo/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Your Shopping Cart</h2>
+    {% if cart_items %}
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Total</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in cart_items %}
+                <tr>
+                    <td>
+                        {% if item.product.image %}
+                        <img src="{{ item.product.image.url }}" alt="{{ item.product.product_name }}" style="width: 50px; height: 50px; object-fit: cover;">
+                        {% endif %}
+                        {{ item.product.product_name }}
+                    </td>
+                    <td>₹{{ item.product.price }}</td>
+                    <td>
+                        <form method="post" action="{% url 'update_cart' item.product.product_id %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="number" name="quantity" value="{{ item.quantity }}" min="1" style="width: 60px;">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Update</button>
+                        </form>
+                    </td>
+                    <td>₹{{ item.total_price }}</td>
+                    <td>
+                        <form method="post" action="{% url 'remove_from_cart' item.product.product_id %}" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                    <td><strong>₹{{ cart_total }}</strong></td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    <div class="text-end mt-3">
+        <a href="{% url 'checkout' %}" class="btn btn-primary">Proceed to Checkout</a>
+    </div>
+    {% else %}
+    <p>Your cart is empty.</p>
+    <a href="{% url 'product_list' %}" class="btn btn-primary">Continue Shopping</a>
+    {% endif %}
+</div>
+{% endblock %} 

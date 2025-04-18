@@ -20,7 +20,7 @@
                         <div class="col-md-6">
                             <h2>{{ product.product_name }}</h2>
                             <p class="text-muted">{{ product.description }}</p>
-                            <p><strong>Price:</strong> ${{ product.price }}</p>
+                            <p><strong>Price:</strong> ₹{{ product.price }}</p>
                             <p><strong>Condition:</strong> {{ product.product_condition }}</p>
                             <p><strong>Type:</strong> {{ product.product_type }}</p>
                             <p><strong>Category:</strong> {{ product.category|default:"Not specified" }}</p>
@@ -28,7 +28,7 @@
                             
                             {% if product.product_type == 'Auction' %}
                                 {% if bidding_info %}
-                                <p><strong>Current Highest Bid:</strong> ${{ bidding_info.bid_amt }}</p>
+                                <p><strong>Current Highest Bid:</strong> ₹{{ bidding_info.bid_amt }}</p>
                                 <p><strong>Bids:</strong> {{ bidding_info.total_bids }}</p>
                                 {% endif %}
                                 <a href="{% url 'place_bid' product.product_id %}" class="btn btn-primary">Place Bid</a>
@@ -133,7 +133,7 @@
                             </div>
                             <div class="col-8 ps-3">
                                 <h6 class="mb-1">{{ similar_product.product_name }}</h6>
-                                <p class="mb-1">${{ similar_product.price }}</p>
+                                <p class="mb-1">₹{{ similar_product.price }}</p>
                                 <a href="{% url 'product_detail' similar_product.product_id %}" class="btn btn-sm btn-outline-primary">View</a>
                             </div>
                         </div>

@@ -13,6 +13,11 @@ class User(models.Model):
     def __str__(self):
         return self.user_name
     
+    class Meta:
+        verbose_name = "User"
+        verbose_name_plural = "Users"
+        db_table = 'USER'
+    
 class Seller(models.Model):
     seller_id = models.CharField(max_length=25,primary_key=True)
     seller_name = models.CharField(max_length=50,null=False)
@@ -106,6 +111,7 @@ class Tracking(models.Model):
     class Meta:
         verbose_name = "Tracking"
         verbose_name_plural = "Tracking"
+        db_table = 'TRACKING'
     
 class Inventory(models.Model):
     inventory_id = models.CharField(max_length=25, primary_key=True)
@@ -162,14 +168,12 @@ class Bidding(models.Model):
         constraints = [
             models.CheckConstraint(check=models.Q(bid_amt__gte=models.F('initial_bid_amt')), name='chk_bid_amt')
         ]
-
-    def __str__(self):
-        return f"{self.user.username} bid {self.bid_amt} on {self.product.product_name}"
-    
-    class Meta:
         verbose_name = "Bidding"
         verbose_name_plural = "Bidding"
         db_table = 'BIDDING'
+
+    def __str__(self):
+        return f"{self.user.username} bid {self.bid_amt} on {self.product.product_name}"
     
 class ProductReview(models.Model):
     RATING_CHOICES = [
@@ -198,7 +202,3 @@ class ProductReview(models.Model):
 
     def __str__(self):
         return f"Review by {self.user.username} for {self.product.product_name}"
-
-    
-
-
