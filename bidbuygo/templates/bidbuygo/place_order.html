@@ -1,7 +1,0 @@
-<h2>Place Order for {{ product.name }}</h2>
-<form method="post">
-    {% csrf_token %}
-    <label for="order_address">Address:</label>
-    <textarea name="order_address" required></textarea><br>
-    <button type="submit">Place Order</button>
-</form>

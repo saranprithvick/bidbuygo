@@ -1,0 +1,75 @@
+{% extends 'bidbuygo/base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">Place Bid for {{ product.product_name }}</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            {% if product.image %}
+                            <img src="{{ product.image.url }}" class="img-fluid rounded" alt="{{ product.product_name }}">
+                            {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 200px;">
+                                <span class="text-muted">No image available</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Current Highest Bid: ${{ bidding_info.bid_amt|default:product.price }}</h5>
+                            <p class="text-muted">Starting Price: ${{ product.price }}</p>
+                            <p class="text-muted">Condition: {{ product.product_condition }}</p>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        {% if form.errors %}
+                            <div class="alert alert-danger">
+                                Please correct the errors below.
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <label for="bid_amt" class="form-label">Your Bid Amount ($)</label>
+                            <input type="number" class="form-control" id="bid_amt" name="bid_amt" 
+                                   min="{{ bidding_info.bid_amt|default:product.price|add:'1' }}" step="0.01" required>
+                            <small class="text-muted">Minimum bid: ${{ bidding_info.bid_amt|default:product.price|add:'1' }}</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="is_auto_bid" name="is_auto_bid">
+                                <label class="form-check-label" for="is_auto_bid">
+                                    Enable Auto-Bidding
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3" id="auto_bid_limit_div" style="display: none;">
+                            <label for="auto_bid_limit" class="form-label">Maximum Auto-Bid Amount ($)</label>
+                            <input type="number" class="form-control" id="auto_bid_limit" name="auto_bid_limit" 
+                                   min="{{ bidding_info.bid_amt|default:product.price|add:'1' }}" step="0.01">
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Place Bid</button>
+                            <a href="{% url 'product_detail' product.product_id %}" class="btn btn-outline-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('is_auto_bid').addEventListener('change', function() {
+    document.getElementById('auto_bid_limit_div').style.display = this.checked ? 'block' : 'none';
+});
+</script>
+{% endblock %} 

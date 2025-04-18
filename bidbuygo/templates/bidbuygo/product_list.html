@@ -1,21 +1,95 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product List</title>
-</head>
-<body>
-    <h1>Available Products</h1>
-    <ul>
+{% extends 'bidbuygo/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Search Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <input type="text" class="form-control" name="query" value="{{ request.GET.query }}" placeholder="Search products...">
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="product_type">
+                        <option value="">All Types</option>
+                        <option value="Regular" {% if request.GET.product_type == 'Regular' %}selected{% endif %}>Regular</option>
+                        <option value="Thrift" {% if request.GET.product_type == 'Thrift' %}selected{% endif %}>Thrift</option>
+                        <option value="Auction" {% if request.GET.product_type == 'Auction' %}selected{% endif %}>Auction</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" name="product_condition">
+                        <option value="">All Conditions</option>
+                        <option value="New" {% if request.GET.product_condition == 'New' %}selected{% endif %}>New</option>
+                        <option value="Refurbished" {% if request.GET.product_condition == 'Refurbished' %}selected{% endif %}>Refurbished</option>
+                        <option value="Used" {% if request.GET.product_condition == 'Used' %}selected{% endif %}>Used</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Products Grid -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
         {% for product in products %}
-            <li>
-                <a href="{% url 'product_detail' product.product_id %}">{{ product.product_name }}</a> - ₹{{ product.price }}
-            </li>
+        <div class="col">
+            <div class="card h-100">
+                {% if product.image %}
+                <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.product_name }}" style="height: 200px; object-fit: cover;">
+                {% else %}
+                <div class="bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
+                    <span class="text-muted">No image available</span>
+                </div>
+                {% endif %}
+                <div class="card-body">
+                    <h5 class="card-title">{{ product.product_name }}</h5>
+                    <p class="card-text text-muted">{{ product.description|truncatechars:100 }}</p>
+                    <p class="card-text">
+                        <strong>Price:</strong> ${{ product.price }}<br>
+                        <strong>Condition:</strong> {{ product.product_condition }}<br>
+                        <strong>Type:</strong> {{ product.product_type }}
+                    </p>
+                </div>
+                <div class="card-footer">
+                    <a href="{% url 'product_detail' product.product_id %}" class="btn btn-primary w-100">View Details</a>
+                </div>
+            </div>
+        </div>
         {% empty %}
-            <li>No products available.</li>
+        <div class="col-12">
+            <div class="alert alert-info">
+                No products found matching your criteria.
+            </div>
+        </div>
         {% endfor %}
-    </ul>
-    <a href="{% url 'home' %}">Back to Home</a>
-</body>
-</html>
+    </div>
+
+    <!-- Pagination -->
+    {% if products.has_other_pages %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if products.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ products.previous_page_number }}">&laquo; Previous</a>
+            </li>
+            {% endif %}
+
+            {% for num in products.paginator.page_range %}
+            <li class="page-item {% if products.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endfor %}
+
+            {% if products.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ products.next_page_number }}">Next &raquo;</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %} 

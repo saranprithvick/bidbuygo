@@ -1,15 +1,150 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ product.product_name }}</title>
-</head>
-<body>
-    <h1>{{ product.product_name }}</h1>
-    <p><strong>Price:</strong> ₹{{ product.price }}</p>
-    <p><strong>Description:</strong> {{ product.description }}</p>
-    <p><strong>Category:</strong> {{ product.category }}</p>
-    <a href="{% url 'product_list' %}">Back to Product List</a>
-</body>
-</html>
+{% extends 'bidbuygo/base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Product Images and Details -->
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            {% if product.image %}
+                            <img src="{{ product.image.url }}" class="img-fluid rounded" alt="{{ product.product_name }}">
+                            {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 300px;">
+                                <span class="text-muted">No image available</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h2>{{ product.product_name }}</h2>
+                            <p class="text-muted">{{ product.description }}</p>
+                            <p><strong>Price:</strong> ${{ product.price }}</p>
+                            <p><strong>Condition:</strong> {{ product.product_condition }}</p>
+                            <p><strong>Type:</strong> {{ product.product_type }}</p>
+                            <p><strong>Category:</strong> {{ product.category|default:"Not specified" }}</p>
+                            <p><strong>Available Quantity:</strong> {{ product.quantity }}</p>
+                            
+                            {% if product.product_type == 'Auction' %}
+                                {% if bidding_info %}
+                                <p><strong>Current Highest Bid:</strong> ${{ bidding_info.bid_amt }}</p>
+                                <p><strong>Bids:</strong> {{ bidding_info.total_bids }}</p>
+                                {% endif %}
+                                <a href="{% url 'place_bid' product.product_id %}" class="btn btn-primary">Place Bid</a>
+                            {% else %}
+                                <form method="post" action="{% url 'place_order' product.product_id %}">
+                                    {% csrf_token %}
+                                    <div class="mb-3">
+                                        <label for="quantity" class="form-label">Quantity</label>
+                                        <input type="number" class="form-control" id="quantity" name="quantity" 
+                                               value="1" min="1" max="{{ product.quantity }}">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary">Add to Cart</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Product Information -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#details">Details</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#reviews">Reviews</a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="details">
+                            {% if product.warranty_period %}
+                            <p><strong>Warranty Period:</strong> {{ product.warranty_period }} months</p>
+                            {% endif %}
+                            
+                            {% if product.refurbishment_details %}
+                            <p><strong>Refurbishment Details:</strong><br>{{ product.refurbishment_details }}</p>
+                            {% endif %}
+                            
+                            {% if product.thrift_condition_details %}
+                            <p><strong>Condition Details:</strong><br>{{ product.thrift_condition_details }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="tab-pane fade" id="reviews">
+                            {% if reviews %}
+                                {% for review in reviews %}
+                                <div class="mb-3">
+                                    <div class="d-flex justify-content-between">
+                                        <h5>{{ review.user.username }}</h5>
+                                        <small class="text-muted">{{ review.created_at|date:"F d, Y" }}</small>
+                                    </div>
+                                    <div class="mb-2">
+                                        {% for i in "12345"|make_list %}
+                                            {% if forloop.counter <= review.rating %}
+                                            <i class="bi bi-star-fill text-warning"></i>
+                                            {% else %}
+                                            <i class="bi bi-star text-warning"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    <p>{{ review.review_text }}</p>
+                                    {% if review.images %}
+                                    <img src="{{ review.images.url }}" class="img-fluid rounded" style="max-height: 200px;" alt="Review image">
+                                    {% endif %}
+                                    <hr>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <p>No reviews yet.</p>
+                            {% endif %}
+                            
+                            {% if user.is_authenticated %}
+                            <a href="{% url 'add_review' product.product_id %}" class="btn btn-primary">Write a Review</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Similar Products -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Similar Products</h5>
+                </div>
+                <div class="card-body">
+                    {% for similar_product in similar_products %}
+                    <div class="mb-3">
+                        <div class="row g-0">
+                            <div class="col-4">
+                                {% if similar_product.image %}
+                                <img src="{{ similar_product.image.url }}" class="img-fluid rounded" alt="{{ similar_product.product_name }}">
+                                {% else %}
+                                <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 80px;">
+                                    <span class="text-muted small">No image</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="col-8 ps-3">
+                                <h6 class="mb-1">{{ similar_product.product_name }}</h6>
+                                <p class="mb-1">${{ similar_product.price }}</p>
+                                <a href="{% url 'product_detail' similar_product.product_id %}" class="btn btn-sm btn-outline-primary">View</a>
+                            </div>
+                        </div>
+                        {% if not forloop.last %}<hr>{% endif %}
+                    </div>
+                    {% empty %}
+                    <p class="text-muted">No similar products found.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

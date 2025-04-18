@@ -26,23 +26,42 @@ class Seller(models.Model):
         db_table = 'SELLER'
     
 class Product(models.Model):
+    PRODUCT_CONDITION_CHOICES = [
+        ('New', 'New'),
+        ('Refurbished', 'Refurbished'),
+        ('Used', 'Used'),
+    ]
+    
+    PRODUCT_TYPE_CHOICES = [
+        ('Regular', 'Regular'),
+        ('Thrift', 'Thrift'),
+        ('Auction', 'Auction'),
+    ]
+    
     product_id = models.CharField(max_length=25,primary_key=True)
     seller = models.ForeignKey(Seller,on_delete=models.CASCADE)
     product_name = models.CharField(max_length=50,null=False)
-    product_type = models.CharField(max_length=50,blank=False,null=False)
+    product_type = models.CharField(max_length=50, choices=PRODUCT_TYPE_CHOICES, default='Regular')
+    product_condition = models.CharField(max_length=50, choices=PRODUCT_CONDITION_CHOICES, null=False)
     description = models.CharField(max_length=255,blank=True,null=True)
     category = models.CharField(max_length=50, blank=True,null=True)
     price = models.DecimalField(max_digits=10,decimal_places=2,null=False)
     quantity = models.IntegerField(null=False)
     review = models.TextField(blank=True,null=True)
-    #image = models.ImageField(upload_to='products/', blank=True, null=True)
+    image = models.ImageField(upload_to='products/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_available = models.BooleanField(default=True)
+    warranty_period = models.IntegerField(null=True, blank=True)  # in months
+    refurbishment_details = models.TextField(blank=True, null=True)  # for refurbished items
+    thrift_condition_details = models.TextField(blank=True, null=True)  # for thrift items
 
     def __str__(self):
         return self.product_name
     
     class Meta:
         verbose_name = "Product"
-        verbose_name_plural = "Product"
+        verbose_name_plural = "Products"
         db_table = 'PRODUCT'
     
 class Orders(models.Model):
@@ -122,14 +141,21 @@ class Bidding(models.Model):
         ('Pending', 'Pending'),
         ('Accepted', 'Accepted'),
         ('Rejected', 'Rejected'),
+        ('Won', 'Won'),
+        ('Lost', 'Lost'),
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    bid_time = models.DateTimeField(null=False)
-    bid_amt = models.DecimalField(max_digits=10, decimal_places=2,null=False)
-    bid_status = models.CharField(max_length=50, choices=BID_STATUS_CHOICES,null=False)
+    bid_time = models.DateTimeField(auto_now_add=True)
+    bid_amt = models.DecimalField(max_digits=10, decimal_places=2, null=False)
+    bid_status = models.CharField(max_length=50, choices=BID_STATUS_CHOICES, default='Pending')
     initial_bid_amt = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    auto_bid_limit = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    is_auto_bid = models.BooleanField(default=False)
+    bid_increment = models.DecimalField(max_digits=10, decimal_places=2, default=1.00)
+    auction_end_time = models.DateTimeField(null=True, blank=True)
+    is_winner = models.BooleanField(default=False)
 
     class Meta:
         unique_together = (('user', 'product', 'bid_time'),)
@@ -145,6 +171,33 @@ class Bidding(models.Model):
         verbose_name_plural = "Bidding"
         db_table = 'BIDDING'
     
+class ProductReview(models.Model):
+    RATING_CHOICES = [
+        (1, '1 Star'),
+        (2, '2 Stars'),
+        (3, '3 Stars'),
+        (4, '4 Stars'),
+        (5, '5 Stars'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    rating = models.IntegerField(choices=RATING_CHOICES)
+    review_text = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_verified_purchase = models.BooleanField(default=False)
+    helpful_votes = models.IntegerField(default=0)
+    images = models.ImageField(upload_to='review_images/', blank=True, null=True)
+
+    class Meta:
+        unique_together = (('user', 'product'),)
+        verbose_name = "Product Review"
+        verbose_name_plural = "Product Reviews"
+        db_table = 'PRODUCT_REVIEW'
+
+    def __str__(self):
+        return f"Review by {self.user.username} for {self.product.product_name}"
 
     
 
