@@ -1,28 +1,32 @@
 from django.contrib import admin
 from .models import *
 
+@admin.register(Size)
+class SizeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description')
+    search_fields = ('name', 'description')
+    ordering = ('name',)
+
+@admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('product_name', 'product_type', 'product_condition', 'price', 'quantity', 'is_available')
-    list_filter = ('product_type', 'product_condition', 'category', 'is_available')
-    search_fields = ('product_name', 'description')
-    readonly_fields = ('created_at', 'updated_at')
+    list_display = ('name', 'category', 'price', 'size', 'quantity', 'product_type', 'product_condition', 'auction_status')
+    list_filter = ('category', 'product_type', 'product_condition', 'auction_status', 'size')
+    search_fields = ('name', 'description', 'size')
+    list_editable = ('price', 'quantity', 'size')
     fieldsets = (
         ('Basic Information', {
-            'fields': ('product_name', 'product_type', 'product_condition', 'description', 'category')
+            'fields': ('name', 'description', 'category', 'image')
         }),
         ('Pricing and Inventory', {
-            'fields': ('price', 'quantity', 'is_available')
+            'fields': ('price', 'quantity', 'size')
         }),
-        ('Additional Details', {
-            'fields': ('warranty_period', 'refurbishment_details', 'thrift_condition_details')
+        ('Product Details', {
+            'fields': ('product_type', 'product_condition')
         }),
-        ('Media', {
-            'fields': ('image',)
-        }),
-        ('Timestamps', {
-            'fields': ('created_at', 'updated_at'),
+        ('Auction Settings', {
+            'fields': ('auction_status', 'last_bid_time'),
             'classes': ('collapse',)
-        }),
+        })
     )
 
 class OrderAdmin(admin.ModelAdmin):
@@ -55,7 +59,6 @@ class SellerAdmin(admin.ModelAdmin):
     search_fields = ('seller_name',)
 
 # Register models with their custom admin classes
-admin.site.register(Product, ProductAdmin)
 admin.site.register(Orders, OrderAdmin)
 admin.site.register(Bidding, BiddingAdmin)
 admin.site.register(ProductReview, ProductReviewAdmin)

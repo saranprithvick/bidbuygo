@@ -66,58 +66,74 @@ class Category(models.Model):
         verbose_name_plural = "Categories"
         db_table = 'CATEGORY'
 
+class Size(models.Model):
+    name = models.CharField(max_length=10, unique=True)
+    description = models.CharField(max_length=50, blank=True, null=True)
+    
+    def __str__(self):
+        return self.name
+    
+    class Meta:
+        verbose_name = "Size"
+        verbose_name_plural = "Sizes"
+        ordering = ['name']
+
 class Product(models.Model):
-    PRODUCT_CONDITION_CHOICES = [
-        ('New', 'New'),
-        ('Refurbished', 'Refurbished'),
-        ('Used', 'Used'),
+    PRODUCT_TYPE_CHOICES = [
+        ('regular', 'Regular'),
+        ('auction', 'Auction'),
     ]
     
-    PRODUCT_TYPE_CHOICES = [
-        ('Regular', 'Regular'),
-        ('Thrift', 'Thrift'),
+    PRODUCT_CONDITION_CHOICES = [
+        ('new', 'New'),
+        ('used', 'Used'),
+        ('refurbished', 'Refurbished'),
     ]
-
+    
     SIZE_CHOICES = [
         ('XS', 'Extra Small'),
         ('S', 'Small'),
         ('M', 'Medium'),
         ('L', 'Large'),
         ('XL', 'Extra Large'),
-        ('XXL', '2X Large'),
-        ('3XL', '3X Large'),
+        ('XXL', 'Double Extra Large'),
+        ('36', '36'),
+        ('37', '37'),
+        ('38', '38'),
+        ('39', '39'),
+        ('40', '40'),
+        ('41', '41'),
+        ('42', '42'),
+        ('43', '43'),
+        ('44', '44'),
+        ('45', '45'),
+        ('46', '46'),
+        ('47', '47'),
+        ('48', '48'),
+        ('49', '49'),
+        ('50', '50'),
         ('Free', 'Free Size'),
     ]
     
-    product_id = models.CharField(max_length=25,primary_key=True)
-    seller = models.ForeignKey(Seller,on_delete=models.CASCADE)
-    product_name = models.CharField(max_length=50,null=False)
-    product_type = models.CharField(max_length=50, choices=PRODUCT_TYPE_CHOICES, default='Regular')
-    product_condition = models.CharField(max_length=50, choices=PRODUCT_CONDITION_CHOICES, null=False)
-    size = models.CharField(max_length=10, choices=SIZE_CHOICES, null=False, default='M')
-    description = models.CharField(max_length=255,blank=True,null=True)
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
-    price = models.DecimalField(max_digits=10,decimal_places=2,null=False)
-    quantity = models.IntegerField(null=False)
-    review = models.TextField(blank=True,null=True)
-    image = models.ImageField(upload_to='products/', blank=True, null=True)
+    name = models.CharField(max_length=200, null=True, blank=True)
+    description = models.TextField()
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    product_type = models.CharField(max_length=10, choices=PRODUCT_TYPE_CHOICES, default='regular')
+    product_condition = models.CharField(max_length=20, choices=PRODUCT_CONDITION_CHOICES, default='new')
+    quantity = models.IntegerField(default=0)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, null=True, blank=True)
+    image = models.URLField()
+    size = models.CharField(max_length=10, choices=SIZE_CHOICES, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    is_available = models.BooleanField(default=True)
-    warranty_period = models.IntegerField(null=True, blank=True)  # in months
-    refurbishment_details = models.TextField(blank=True, null=True)  # for refurbished items
-    thrift_condition_details = models.TextField(blank=True, null=True)  # for thrift items
-    current_bid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # for thrift items
-    last_bid_time = models.DateTimeField(null=True, blank=True)  # for thrift items
-
+    
+    # Auction specific fields
+    auction_status = models.CharField(max_length=10, choices=[('Active', 'Active'), ('Ended', 'Ended')], default='Active')
+    last_bid_time = models.DateTimeField(null=True, blank=True)
+    
     def __str__(self):
-        return self.product_name
-    
-    class Meta:
-        verbose_name = "Product"
-        verbose_name_plural = "Products"
-        db_table = 'PRODUCT'
-    
+        return self.name or "Unnamed Product"
+
 class Orders(models.Model):
     order_id = models.CharField(max_length=25,primary_key=True)
     user = models.ForeignKey(User,on_delete=models.CASCADE)
@@ -169,7 +185,7 @@ class Inventory(models.Model):
     location = models.CharField(max_length=50, blank=True, null=True)
 
     def __str__(self):
-        return f"Inventory for {self.product.product_name}"
+        return f"Inventory for {self.product.name}"
     
     class Meta:
         verbose_name = "Inventory"
@@ -245,7 +261,7 @@ class Bidding(models.Model):
         db_table = 'BIDDING'
 
     def __str__(self):
-        return f"{self.user.username} bid {self.bid_amt} on {self.product.product_name}"
+        return f"{self.user.username} bid {self.bid_amt} on {self.product.name}"
     
 class ProductReview(models.Model):
     RATING_CHOICES = [
@@ -273,4 +289,4 @@ class ProductReview(models.Model):
         db_table = 'PRODUCT_REVIEW'
 
     def __str__(self):
-        return f"Review by {self.user.username} for {self.product.product_name}"
+        return f"Review by {self.user.username} for {self.product.name}"
