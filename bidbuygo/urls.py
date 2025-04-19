@@ -29,4 +29,9 @@ urlpatterns = [
     # Seller URLs
     path('seller/dashboard/', views.seller_dashboard, name='seller_dashboard'),
     path('seller/add_product/', views.add_product, name='add_product'),
+    
+    # Payment URLs
+    path('payment/create/<str:order_id>/', views.create_payment, name='create_payment'),
+    path('payment/callback/', views.payment_callback, name='payment_callback'),
+    path('payment/refund/<str:transaction_id>/', views.initiate_refund, name='initiate_refund'),
 ] 

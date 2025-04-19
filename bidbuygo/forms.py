@@ -1,26 +1,33 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import User, Product, Bidding, ProductReview, Orders
+from .models import User, Product, Bidding, ProductReview, Orders, Seller, Transaction
 from django.core.validators import MinValueValidator
 from decimal import Decimal
 
-class CustomUserCreationForm(forms.ModelForm):
-    password = forms.CharField(widget=forms.PasswordInput)
-    confirm_password = forms.CharField(widget=forms.PasswordInput)
+class UserRegistrationForm(forms.ModelForm):
+    password1 = forms.CharField(label='Password', widget=forms.PasswordInput)
+    password2 = forms.CharField(label='Confirm Password', widget=forms.PasswordInput)
+    email = forms.EmailField(required=True)
+    mobile_number = forms.CharField(max_length=15, required=False)
+    address = forms.CharField(widget=forms.Textarea, required=False)
 
     class Meta:
         model = User
-        fields = ('user_name', 'email', 'password', 'mobile_number', 'address')
+        fields = ('email', 'mobile_number', 'address')
 
-    def clean(self):
-        cleaned_data = super().clean()
-        password = cleaned_data.get('password')
-        confirm_password = cleaned_data.get('confirm_password')
-
-        if password and confirm_password and password != confirm_password:
+    def clean_password2(self):
+        password1 = self.cleaned_data.get('password1')
+        password2 = self.cleaned_data.get('password2')
+        if password1 and password2 and password1 != password2:
             raise forms.ValidationError("Passwords don't match")
+        return password2
 
-        return cleaned_data
+    def save(self, commit=True):
+        user = super().save(commit=False)
+        user.set_password(self.cleaned_data['password1'])
+        if commit:
+            user.save()
+        return user
 
 class ProductForm(forms.ModelForm):
     class Meta:
@@ -90,4 +97,37 @@ class SearchForm(forms.Form):
         max_digits=10,
         decimal_places=2,
         required=False
-    ) 
+    )
+
+class BidForm(forms.Form):
+    bid_amount = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        min_value=0.01,
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
+    enable_auto_bid = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    auto_bid_limit = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        required=False,
+        min_value=0.01,
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        enable_auto_bid = cleaned_data.get('enable_auto_bid')
+        auto_bid_limit = cleaned_data.get('auto_bid_limit')
+        bid_amount = cleaned_data.get('bid_amount')
+
+        if enable_auto_bid and not auto_bid_limit:
+            raise forms.ValidationError("Auto-bid limit is required when auto-bidding is enabled")
+
+        if enable_auto_bid and auto_bid_limit and auto_bid_limit <= bid_amount:
+            raise forms.ValidationError("Auto-bid limit must be greater than your bid amount")
+
+        return cleaned_data 

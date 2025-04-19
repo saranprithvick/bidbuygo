@@ -11,6 +11,21 @@ from .forms import *
 import uuid
 from decimal import Decimal
 from django.contrib.auth.forms import AuthenticationForm
+from .services.bidding_service import BiddingService
+from django.core.exceptions import ValidationError
+from django.views.decorators.csrf import csrf_exempt
+from .payment_utils import PaymentManager
+import json
+import razorpay
+from django.conf import settings
+from django.urls import reverse
+from django.contrib.auth.models import User
+
+# Initialize Razorpay client only if settings are configured
+try:
+    client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+except AttributeError:
+    client = None
 
 def home(request):
     # Featured products (new arrivals)
@@ -86,13 +101,20 @@ def product_detail(request, product_id):
         is_available=True
     ).exclude(product_id=product_id)[:4]
     
-    # For auction products, get bidding information
-    bidding_info = None
+    # Get auction information
+    auction_info = None
+    bid_form = None
+    user_highest_bid = None
+    
     if product.product_type == 'Auction':
-        bidding_info = Bidding.objects.filter(
-            product=product,
-            bid_status='Pending'
-        ).order_by('-bid_amt').first()
+        auction_info = BiddingService.get_auction_status(product)
+        if request.user.is_authenticated and not auction_info['has_ended']:
+            bid_form = BidForm()
+            user_highest_bid = Bidding.objects.filter(
+                user=request.user,
+                product=product,
+                bid_status='Pending'
+            ).order_by('-bid_amt').first()
     
     context = {
         'product': product,
@@ -100,20 +122,23 @@ def product_detail(request, product_id):
         'average_rating': average_rating,
         'review_count': review_count,
         'related_products': related_products,
-        'bidding_info': bidding_info,
+        'auction_info': auction_info,
+        'bid_form': bid_form,
+        'user_highest_bid': user_highest_bid,
     }
     return render(request, 'bidbuygo/product_detail.html', context)
 
 def user_registration(request):
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = UserRegistrationForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)  
+            login(request, user)
+            messages.success(request, 'Registration successful! Welcome to BidBuyGo.')
             return redirect('home')
     else:
-        form = UserCreationForm()
-    return render(request, 'bidbuygo/user_registration.html', {'form': form})
+        form = UserRegistrationForm()
+    return render(request, 'bidbuygo/register.html', {'form': form})
 
 def user_login(request):
     if request.method == 'POST':
@@ -132,50 +157,39 @@ def user_logout(request):
 
 @login_required
 def place_bid(request, product_id):
-    product = get_object_or_404(Product, product_id=product_id)
-    
-    if product.product_type != 'Auction':
-        messages.error(request, 'This product is not available for bidding.')
-        return redirect('product_detail', product_id=product_id)
-    
     if request.method == 'POST':
-        form = BiddingForm(request.POST)
-        if form.is_valid():
-            bid_amt = form.cleaned_data['bid_amt']
-            auto_bid_limit = form.cleaned_data['auto_bid_limit']
-            is_auto_bid = form.cleaned_data['is_auto_bid']
+        product = get_object_or_404(Product, product_id=product_id)
+        try:
+            bid_amount = Decimal(request.POST.get('bid_amount'))
+            is_auto_bid = request.POST.get('is_auto_bid') == 'true'
+            auto_bid_limit = Decimal(request.POST.get('auto_bid_limit')) if request.POST.get('auto_bid_limit') else None
+            bid_increment = Decimal(request.POST.get('bid_increment', '1.00'))
             
-            # Check if bid amount is higher than current highest bid
-            current_highest_bid = Bidding.objects.filter(
-                product=product,
-                bid_status='Pending'
-            ).order_by('-bid_amt').first()
-            
-            if current_highest_bid and bid_amt <= current_highest_bid.bid_amt:
-                messages.error(request, 'Your bid must be higher than the current highest bid.')
-                return redirect('product_detail', product_id=product_id)
-            
-            # Create new bid
-            bid = Bidding.objects.create(
+            bid = BiddingService.place_bid(
                 user=request.user,
                 product=product,
-                bid_amt=bid_amt,
-                auto_bid_limit=auto_bid_limit,
+                bid_amount=bid_amount,
                 is_auto_bid=is_auto_bid,
-                bid_status='Pending',
-                initial_bid_amt=current_highest_bid.bid_amt if current_highest_bid else product.price
+                auto_bid_limit=auto_bid_limit,
+                bid_increment=bid_increment
             )
             
             messages.success(request, 'Your bid has been placed successfully!')
             return redirect('product_detail', product_id=product_id)
-    else:
-        form = BiddingForm()
-    
-    context = {
-        'form': form,
-        'product': product,
-    }
-    return render(request, 'bidbuygo/place_bid.html', context)
+            
+        except Exception as e:
+            messages.error(request, str(e))
+            return redirect('product_detail', product_id=product_id)
+            
+    return redirect('product_detail', product_id=product_id)
+
+def get_auction_status(request, product_id):
+    product = get_object_or_404(Product, product_id=product_id)
+    try:
+        status = BiddingService.get_auction_status(product)
+        return JsonResponse(status)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
 
 @login_required
 def add_review(request, product_id):
@@ -211,28 +225,16 @@ def add_review(request, product_id):
 
 @login_required
 def user_profile(request):
-    user = request.user
-    orders = Orders.objects.filter(user=user).order_by('-order_date')
-    bids = Bidding.objects.filter(user=user).order_by('-bid_time')
-    reviews = ProductReview.objects.filter(user=user).order_by('-created_at')
-    
-    if request.method == 'POST':
-        form = CustomUserCreationForm(request.POST, instance=user)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Your profile has been updated successfully!')
-            return redirect('user_profile')
-    else:
-        form = CustomUserCreationForm(instance=user)
-    
-    context = {
-        'user': user,
-        'form': form,
-        'orders': orders,
-        'bids': bids,
-        'reviews': reviews,
-    }
-    return render(request, 'bidbuygo/user_profile.html', context)
+    try:
+        # Get orders for the current user
+        orders = Orders.objects.filter(user=request.user).order_by('-order_date')
+        return render(request, 'bidbuygo/profile.html', {
+            'user': request.user,
+            'orders': orders
+        })
+    except Exception as e:
+        messages.error(request, f'Error accessing profile: {str(e)}')
+        return redirect('home')
 
 @login_required
 def seller_dashboard(request):
@@ -341,3 +343,141 @@ def complete_payment(request, order_id):
         'order': order,
     }
     return render(request, 'bidbuygo/complete_payment.html', context)
+
+@login_required
+def my_bids(request):
+    bids = Bidding.objects.filter(user=request.user).order_by('-bid_time')
+    return render(request, 'bidbuygo/my_bids.html', {'bids': bids})
+
+@login_required
+def end_auction(request, product_id):
+    if not request.user.is_staff:
+        messages.error(request, 'Only staff members can end auctions')
+        return redirect('product_detail', product_id=product_id)
+        
+    product = get_object_or_404(Product, product_id=product_id)
+    try:
+        BiddingService.end_auction(product)
+        messages.success(request, 'Auction has been ended successfully')
+    except Exception as e:
+        messages.error(request, str(e))
+        
+    return redirect('product_detail', product_id=product_id)
+
+def payment_page(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id, user=request.user)
+        context = {
+            'order': order,
+            'razorpay_key': settings.RAZORPAY_KEY_ID
+        }
+        return render(request, 'bidbuygo/payment.html', context)
+    except Order.DoesNotExist:
+        messages.error(request, 'Order not found.')
+        return redirect('home')
+
+def create_payment(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id, user=request.user)
+        
+        # Create Razorpay Order
+        razorpay_order = client.order.create({
+            'amount': int(order.amount * 100),  # Amount in paise
+            'currency': 'INR',
+            'receipt': str(order.id)
+        })
+        
+        # Update order with Razorpay order ID
+        order.razorpay_order_id = razorpay_order['id']
+        order.save()
+        
+        return JsonResponse({
+            'order_id': razorpay_order['id'],
+            'amount': razorpay_order['amount'],
+            'currency': razorpay_order['currency']
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+def payment_callback(request):
+    if request.method == "POST":
+        try:
+            # Get payment data
+            payment_data = json.loads(request.body)
+            razorpay_payment_id = payment_data.get('razorpay_payment_id')
+            razorpay_order_id = payment_data.get('razorpay_order_id')
+            razorpay_signature = payment_data.get('razorpay_signature')
+            
+            # Verify signature
+            params_dict = {
+                'razorpay_payment_id': razorpay_payment_id,
+                'razorpay_order_id': razorpay_order_id,
+                'razorpay_signature': razorpay_signature
+            }
+            
+            try:
+                client.utility.verify_payment_signature(params_dict)
+            except Exception:
+                return JsonResponse({
+                    'status': 'error',
+                    'message': 'Invalid payment signature'
+                }, status=400)
+            
+            # Update order and create transaction
+            order = Order.objects.get(razorpay_order_id=razorpay_order_id)
+            order.status = 'PAID'
+            order.save()
+            
+            Transaction.objects.create(
+                order=order,
+                payment_id=razorpay_payment_id,
+                amount=order.amount,
+                status='SUCCESS'
+            )
+            
+            return JsonResponse({'status': 'success'})
+            
+        except Exception as e:
+            return JsonResponse({
+                'status': 'error',
+                'message': str(e)
+            }, status=400)
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request'}, status=400)
+
+def payment_success(request):
+    return render(request, 'bidbuygo/payment_success.html')
+
+def initiate_refund(request, transaction_id):
+    """Initiate a refund for a transaction"""
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Unauthorized'}, status=403)
+        
+    try:
+        transaction = get_object_or_404(Transaction, id=transaction_id)
+        
+        # Create refund
+        refund_data = {
+            'payment_id': transaction.payment_id,
+            'amount': int(transaction.amount * 100),  # Amount in paise
+            'speed': 'normal'
+        }
+        
+        refund = client.payment.refund(transaction.payment_id, refund_data)
+        
+        # Update transaction status
+        transaction.status = 'REFUNDED'
+        transaction.refund_id = refund['id']
+        transaction.save()
+        
+        return JsonResponse({
+            'success': True,
+            'refund_id': refund['id']
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=400)

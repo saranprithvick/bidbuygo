@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_head %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="card-title mb-4">Order Summary</h2>
+                    
+                    <div class="order-details mb-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Order ID:</strong> {{ order.id }}</p>
+                                <p><strong>Product:</strong> {{ order.product.name }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Amount:</strong> ₹{{ order.amount }}</p>
+                                <p><strong>Status:</strong> {{ order.status }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <button id="rzp-button" class="btn btn-primary btn-lg">Pay Now</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.getElementById('rzp-button').onclick = function(e) {
+    e.preventDefault();
+    
+    fetch('{% url "create_payment" order.id %}')
+        .then(response => response.json())
+        .then(data => {
+            var options = {
+                "key": "{{ razorpay_key }}", 
+                "amount": data.amount,
+                "currency": "INR",
+                "name": "BidBuyGo",
+                "description": "Payment for Order #{{ order.id }}",
+                "order_id": data.order_id,
+                "handler": function (response) {
+                    // Handle the success callback
+                    window.location.href = "{% url 'payment_success' %}";
+                },
+                "prefill": {
+                    "name": "{{ request.user.get_full_name }}",
+                    "email": "{{ request.user.email }}"
+                },
+                "theme": {
+                    "color": "#3399cc"
+                }
+            };
+            var rzp = new Razorpay(options);
+            rzp.open();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Something went wrong. Please try again.');
+        });
+}
+</script>
+{% endblock %}
+{% endblock %} 

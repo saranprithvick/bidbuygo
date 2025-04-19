@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">{{ product.product_name }}</h5>
+                    <p class="card-text">{{ product.description }}</p>
+                    <p class="card-text"><strong>Current Price:</strong> ₹{{ product.price }}</p>
+                    <p class="card-text"><strong>Time Remaining:</strong> <span id="time-remaining"></span></p>
+                    <p class="card-text"><strong>Current Bid:</strong> ₹<span id="current-bid">{{ product.current_bid|default:product.price }}</span></p>
+                    <p class="card-text"><strong>Bid Count:</strong> <span id="bid-count">0</span></p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Place Your Bid</h5>
+                    <form id="bid-form" method="POST" action="{% url 'place_bid' product.product_id %}">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="bid_amount">Bid Amount (₹)</label>
+                            <input type="number" class="form-control" id="bid_amount" name="bid_amount" step="0.01" min="{{ product.current_bid|default:product.price }}" required>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="enable_auto_bid" name="is_auto_bid">
+                            <label class="form-check-label" for="enable_auto_bid">Enable Auto-Bidding</label>
+                        </div>
+                        
+                        <div id="auto_bid_fields" style="display: none;">
+                            <div class="form-group">
+                                <label for="auto_bid_limit">Maximum Bid Limit (₹)</label>
+                                <input type="number" class="form-control" id="auto_bid_limit" name="auto_bid_limit" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label for="bid_increment">Bid Increment (₹)</label>
+                                <input type="number" class="form-control" id="bid_increment" name="bid_increment" value="1.00" step="0.01">
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">Place Bid</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    $(document).ready(function() {
+        // Toggle auto-bid fields
+        $('#enable_auto_bid').change(function() {
+            if($(this).is(':checked')) {
+                $('#auto_bid_fields').show();
+            } else {
+                $('#auto_bid_fields').hide();
+            }
+        });
+        
+        // Update auction status periodically
+        function updateAuctionStatus() {
+            $.get('{% url "get_auction_status" product.product_id %}', function(data) {
+                $('#current-bid').text(data.current_bid);
+                $('#bid-count').text(data.bid_count);
+                $('#time-remaining').text(data.time_remaining);
+                
+                // Update minimum bid amount
+                $('#bid_amount').attr('min', data.current_bid);
+            });
+        }
+        
+        // Update status every 5 seconds
+        setInterval(updateAuctionStatus, 5000);
+        updateAuctionStatus();
+    });
+</script>
+{% endblock %}
+{% endblock %} 

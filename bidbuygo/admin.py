@@ -42,10 +42,13 @@ class ProductReviewAdmin(admin.ModelAdmin):
     list_filter = ('rating', 'is_verified_purchase')
     search_fields = ('user__username', 'product__product_name', 'review_text')
 
+@admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ('transaction_id', 'order', 'transaction_amt', 'mode_of_payment')
-    search_fields = ('transaction_id', 'order__order_id')
-    readonly_fields = ('transaction_id',)
+    list_display = ['payment_id', 'order', 'amount', 'mode_of_payment', 'status', 'created_at']
+    list_filter = ['status', 'mode_of_payment', 'created_at']
+    readonly_fields = ['payment_id', 'refund_id', 'created_at', 'updated_at']
+    search_fields = ['payment_id', 'order__id', 'order__user__username']
+    date_hierarchy = 'created_at'
 
 class SellerAdmin(admin.ModelAdmin):
     list_display = ('seller_name',)
@@ -56,7 +59,6 @@ admin.site.register(Product, ProductAdmin)
 admin.site.register(Orders, OrderAdmin)
 admin.site.register(Bidding, BiddingAdmin)
 admin.site.register(ProductReview, ProductReviewAdmin)
-admin.site.register(Transaction, TransactionAdmin)
 admin.site.register(Seller, SellerAdmin)
 admin.site.register(Delivery)
 admin.site.register(Tracking)
