@@ -46,7 +46,7 @@ document.getElementById('rzp-button').onclick = function(e) {
                 "order_id": data.order_id,
                 "handler": function (response) {
                     // Send payment verification details to backend
-                    fetch("{% url 'payment_callback' %}", {
+                    fetch("{% url 'bidbuygo:payment_callback' %}", {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -61,7 +61,7 @@ document.getElementById('rzp-button').onclick = function(e) {
                     .then(response => response.json())
                     .then(data => {
                         if (data.status === 'success') {
-                            window.location.href = "{% url 'payment_success' %}";
+                            window.location.href = "{% url 'bidbuygo:payment_callback' %}";
                         } else {
                             alert('Payment failed: ' + data.message);
                         }

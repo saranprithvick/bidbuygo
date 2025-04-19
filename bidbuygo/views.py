@@ -28,25 +28,17 @@ except AttributeError:
     client = None
 
 def home(request):
-    # Featured products (new arrivals)
-    featured_products = Product.objects.filter(is_available=True).order_by('-created_at')[:8]
-    
-    # Thrift store products
-    thrift_products = Product.objects.filter(
-        product_type='Thrift',
-        is_available=True
-    )[:4]
-    
-    # Auction products
-    auction_products = Product.objects.filter(
-        product_type='Auction',
-        is_available=True
-    )[:4]
-    
+    """Home page view"""
     context = {
-        'featured_products': featured_products,
-        'thrift_products': thrift_products,
-        'auction_products': auction_products,
+        'site_name': 'BidBuyGo',
+        'description': 'Welcome to BidBuyGo - Your Premier Destination for Fashion Auctions and Shopping',
+        'features': [
+            'Exclusive fashion items from top brands',
+            'Competitive bidding on unique pieces',
+            'Secure payment processing',
+            'Fast and reliable delivery',
+            'Customer satisfaction guaranteed'
+        ]
     }
     return render(request, 'bidbuygo/home.html', context)
 
@@ -58,36 +50,43 @@ def product_list(request):
         query = form.cleaned_data.get('query')
         category = form.cleaned_data.get('category')
         product_type = form.cleaned_data.get('product_type')
-        product_condition = form.cleaned_data.get('product_condition')
-        min_price = form.cleaned_data.get('min_price')
-        max_price = form.cleaned_data.get('max_price')
         
         if query:
             products = products.filter(
-                Q(product_name__icontains=query) |
+                Q(name__icontains=query) |
                 Q(description__icontains=query)
             )
+        
         if category:
-            products = products.filter(category=category)
+            products = products.filter(category__name=category)
+            
         if product_type:
             products = products.filter(product_type=product_type)
-        if product_condition:
-            products = products.filter(product_condition=product_condition)
-        if min_price:
-            products = products.filter(price__gte=min_price)
-        if max_price:
-            products = products.filter(price__lte=max_price)
     
-    # Add pagination
-    paginator = Paginator(products, 12)
+    paginator = Paginator(products, 9)  # Show 9 products per page
     page = request.GET.get('page')
     products = paginator.get_page(page)
     
     context = {
         'products': products,
         'form': form,
+        'categories': Category.objects.all(),
     }
     return render(request, 'bidbuygo/product_list.html', context)
+
+def auction_list(request):
+    """View for listing all active auctions"""
+    active_auctions = Product.objects.filter(
+        is_available=True,
+        product_type='auction',
+        auction_end_time__gt=timezone.now()
+    ).order_by('auction_end_time')
+    
+    context = {
+        'auctions': active_auctions,
+        'site_name': 'BidBuyGo - Auctions',
+    }
+    return render(request, 'bidbuygo/auction_list.html', context)
 
 def product_detail(request, product_id):
     product = get_object_or_404(Product, product_id=product_id)
@@ -128,6 +127,31 @@ def product_detail(request, product_id):
     }
     return render(request, 'bidbuygo/product_detail.html', context)
 
+@login_required
+def add_to_cart(request, product_id):
+    product = get_object_or_404(Product, product_id=product_id)
+    
+    if product.quantity <= 0:
+        messages.error(request, 'Sorry, this product is out of stock.')
+        return redirect('bidbuygo:product_detail', product_id=product_id)
+    
+    # Get or create cart for the user
+    cart, created = Cart.objects.get_or_create(user=request.user)
+    
+    # Check if product is already in cart
+    cart_item, created = CartItem.objects.get_or_create(
+        cart=cart,
+        product=product,
+        defaults={'quantity': 1}
+    )
+    
+    if not created:
+        cart_item.quantity += 1
+        cart_item.save()
+    
+    messages.success(request, f'{product.product_name} has been added to your cart.')
+    return redirect('bidbuygo:product_detail', product_id=product_id)
+
 def user_registration(request):
     if request.method == 'POST':
         form = UserRegistrationForm(request.POST)
@@ -135,7 +159,7 @@ def user_registration(request):
             user = form.save()
             login(request, user)
             messages.success(request, 'Registration successful! Welcome to BidBuyGo.')
-            return redirect('home')
+            return redirect('bidbuygo:home')
     else:
         form = UserRegistrationForm()
     return render(request, 'bidbuygo/register.html', {'form': form})
@@ -146,14 +170,14 @@ def user_login(request):
         if form.is_valid():
             user = form.get_user()
             login(request, user)
-            return redirect('home')
+            return redirect('bidbuygo:home')
     else:
         form = AuthenticationForm()
     return render(request, 'bidbuygo/user_login.html', {'form': form})
 
 def user_logout(request):
     logout(request)
-    return redirect('home')
+    return redirect('bidbuygo:home')
 
 @login_required
 def place_bid(request, product_id):

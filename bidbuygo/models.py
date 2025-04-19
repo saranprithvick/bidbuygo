@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.utils import timezone
+import uuid
 # Create your models here.
 
 class UserManager(BaseUserManager):
@@ -53,13 +54,20 @@ class Seller(models.Model):
         db_table = 'SELLER'
     
 class Category(models.Model):
-    name = models.CharField(max_length=50, unique=True)
+    CATEGORY_CHOICES = [
+        ('men', 'Men'),
+        ('women', 'Women'),
+        ('kids', 'Kids'),
+        ('unisex', 'Unisex'),
+    ]
+    
+    name = models.CharField(max_length=50, choices=CATEGORY_CHOICES, unique=True)
     description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return self.name
+        return self.get_name_display()
 
     class Meta:
         verbose_name = "Category"
@@ -78,6 +86,42 @@ class Size(models.Model):
         verbose_name_plural = "Sizes"
         ordering = ['name']
 
+class ProductSize(models.Model):
+    SIZE_CHOICES = [
+        ('XS', 'Extra Small'),
+        ('S', 'Small'),
+        ('M', 'Medium'),
+        ('L', 'Large'),
+        ('XL', 'Extra Large'),
+        ('XXL', 'Double Extra Large'),
+        ('28-30', '28-30'),
+        ('30-32', '30-32'),
+        ('32-34', '32-34'),
+        ('34-36', '34-36'),
+        ('36-38', '36-38'),
+        ('38-40', '38-40'),
+        ('40-42', '40-42'),
+        ('42-44', '42-44'),
+        ('44-46', '44-46'),
+        ('46-48', '46-48'),
+        ('48-50', '48-50'),
+        ('Free', 'Free Size'),
+    ]
+    
+    product = models.ForeignKey('Product', on_delete=models.CASCADE, related_name='sizes')
+    size = models.CharField(max_length=10, choices=SIZE_CHOICES)
+    stock = models.IntegerField(default=0)
+    price_adjustment = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    
+    class Meta:
+        unique_together = ('product', 'size')
+        verbose_name = "Product Size"
+        verbose_name_plural = "Product Sizes"
+        db_table = 'PRODUCT_SIZE'
+    
+    def __str__(self):
+        return f"{self.product.product_name} - {self.get_size_display()}"
+
 class Product(models.Model):
     PRODUCT_TYPE_CHOICES = [
         ('regular', 'Regular'),
@@ -90,33 +134,11 @@ class Product(models.Model):
         ('refurbished', 'Refurbished'),
     ]
     
-    SIZE_CHOICES = [
-        ('XS', 'Extra Small'),
-        ('S', 'Small'),
-        ('M', 'Medium'),
-        ('L', 'Large'),
-        ('XL', 'Extra Large'),
-        ('XXL', 'Double Extra Large'),
-        ('36', '36'),
-        ('37', '37'),
-        ('38', '38'),
-        ('39', '39'),
-        ('40', '40'),
-        ('41', '41'),
-        ('42', '42'),
-        ('43', '43'),
-        ('44', '44'),
-        ('45', '45'),
-        ('46', '46'),
-        ('47', '47'),
-        ('48', '48'),
-        ('49', '49'),
-        ('50', '50'),
-        ('Free', 'Free Size'),
-    ]
+    def generate_product_id():
+        return f"P{str(uuid.uuid4())[:8]}"
     
-    product_id = models.CharField(max_length=25, primary_key=True)
-    seller = models.ForeignKey(Seller, on_delete=models.CASCADE)
+    product_id = models.CharField(max_length=25, primary_key=True, default=generate_product_id)
+    seller = models.ForeignKey(Seller, on_delete=models.CASCADE, null=True, blank=True)
     product_name = models.CharField(max_length=50, null=False)
     product_type = models.CharField(max_length=50, choices=PRODUCT_TYPE_CHOICES, default='regular')
     product_condition = models.CharField(max_length=50, choices=PRODUCT_CONDITION_CHOICES, null=False)
@@ -125,7 +147,7 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, null=False)
     quantity = models.IntegerField(null=False)
     review = models.TextField(blank=True, null=True)
-    image = models.ImageField(upload_to='products/', blank=True, null=True)
+    image = models.ImageField(upload_to='products', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_available = models.BooleanField(default=True)
@@ -134,11 +156,6 @@ class Product(models.Model):
     thrift_condition_details = models.TextField(blank=True, null=True)  # for thrift items
     current_bid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)  # for auction items
     last_bid_time = models.DateTimeField(null=True, blank=True)  # for auction items
-    
-    # New size field
-    size = models.CharField(max_length=10, choices=SIZE_CHOICES, null=True, blank=True)
-    
-    # New auction status field
     auction_status = models.CharField(max_length=10, choices=[('Active', 'Active'), ('Ended', 'Ended')], default='Active')
     
     def __str__(self):
@@ -243,7 +260,36 @@ class Transaction(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"Transaction {self.payment_id} - {self.order.user.username}"
+        return f"Transaction {self.payment_id} - {self.status}"
+
+class Cart(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Cart for {self.user.email}"
+
+    class Meta:
+        verbose_name = "Cart"
+        verbose_name_plural = "Carts"
+        db_table = 'CART'
+
+class CartItem(models.Model):
+    cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    quantity = models.IntegerField(default=1)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.quantity}x {self.product.product_name} in {self.cart}"
+
+    class Meta:
+        verbose_name = "Cart Item"
+        verbose_name_plural = "Cart Items"
+        db_table = 'CART_ITEM'
+        unique_together = ('cart', 'product')
 
 class Bidding(models.Model):
     BID_STATUS_CHOICES = [

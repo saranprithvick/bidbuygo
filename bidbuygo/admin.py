@@ -7,18 +7,29 @@ class SizeAdmin(admin.ModelAdmin):
     search_fields = ('name', 'description')
     ordering = ('name',)
 
+@admin.register(Category)
+class CategoryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'description', 'created_at')
+    search_fields = ('name', 'description')
+    ordering = ('name',)
+
+class ProductSizeInline(admin.TabularInline):
+    model = ProductSize
+    extra = 1
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('product_name', 'category', 'price', 'size', 'quantity', 'product_type', 'product_condition', 'auction_status')
+    list_display = ('product_name', 'category', 'price', 'quantity', 'product_type', 'product_condition', 'auction_status')
     list_filter = ('category', 'product_type', 'product_condition', 'auction_status')
-    search_fields = ('product_name', 'description', 'size')
-    list_editable = ('price', 'quantity', 'size')
+    search_fields = ('product_name', 'description')
+    list_editable = ('price', 'quantity')
+    inlines = [ProductSizeInline]
     fieldsets = (
         ('Basic Information', {
             'fields': ('product_name', 'description', 'category', 'image')
         }),
         ('Pricing and Inventory', {
-            'fields': ('price', 'quantity', 'size')
+            'fields': ('price', 'quantity')
         }),
         ('Product Details', {
             'fields': ('product_type', 'product_condition', 'warranty_period', 'refurbishment_details', 'thrift_condition_details')
@@ -57,6 +68,13 @@ class TransactionAdmin(admin.ModelAdmin):
 class SellerAdmin(admin.ModelAdmin):
     list_display = ('seller_name',)
     search_fields = ('seller_name',)
+
+@admin.register(ProductSize)
+class ProductSizeAdmin(admin.ModelAdmin):
+    list_display = ('product', 'size', 'stock', 'price_adjustment')
+    list_filter = ('size',)
+    search_fields = ('product__product_name',)
+    list_editable = ('stock', 'price_adjustment')
 
 # Register models with their custom admin classes
 admin.site.register(Orders, OrderAdmin)

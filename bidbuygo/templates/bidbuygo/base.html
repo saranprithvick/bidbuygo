@@ -31,33 +31,33 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div class="container">
-            <a class="navbar-brand" href="{% url 'home' %}">BidBuyGo</a>
+            <a class="navbar-brand" href="{% url 'bidbuygo:home' %}">BidBuyGo</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'home' %}">Home</a>
+                        <a class="nav-link" href="{% url 'bidbuygo:home' %}">Home</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'product_list' %}">Products</a>
+                        <a class="nav-link" href="{% url 'bidbuygo:products' %}">Products</a>
                     </li>
                 </ul>
                 <ul class="navbar-nav">
                     {% if user.is_authenticated %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'user_profile' %}">Profile</a>
+                            <a class="nav-link" href="{% url 'bidbuygo:user_profile' %}">Profile</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'user_logout' %}">Logout</a>
+                            <a class="nav-link" href="{% url 'bidbuygo:user_logout' %}">Logout</a>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'user_login' %}">Login</a>
+                            <a class="nav-link" href="{% url 'bidbuygo:user_login' %}">Login</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'user_registration' %}">Register</a>
+                            <a class="nav-link" href="{% url 'bidbuygo:user_registration' %}">Register</a>
                         </li>
                     {% endif %}
                 </ul>
@@ -80,9 +80,33 @@
     </main>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white mt-5 py-3">
-        <div class="container text-center">
-            <p>&copy; 2025 BidBuyGo. All rights reserved.</p>
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <h5>BidBuyGo</h5>
+                    <p>Your premier destination for fashion auctions and shopping.</p>
+                </div>
+                <div class="col-md-3">
+                    <h5>Quick Links</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="{% url 'bidbuygo:home' %}">Home</a></li>
+                        <li><a href="{% url 'bidbuygo:products' %}">Products</a></li>
+                        <li><a href="{% url 'bidbuygo:auctions' %}">Auctions</a></li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <h5>Contact</h5>
+                    <ul class="list-unstyled">
+                        <li>Email: info@bidbuygo.com</li>
+                        <li>Phone: +1 (555) 123-4567</li>
+                    </ul>
+                </div>
+            </div>
+            <hr>
+            <div class="text-center">
+                <p>&copy; 2025 BidBuyGo. All rights reserved.</p>
+            </div>
         </div>
     </footer>
 

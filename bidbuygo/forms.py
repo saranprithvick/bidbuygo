@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import User, Product, Bidding, ProductReview, Orders, Seller, Transaction
+from .models import User, Product, Bidding, ProductReview, Orders, Seller, Transaction, ProductSize
 from django.core.validators import MinValueValidator
 from decimal import Decimal
 
@@ -41,7 +41,6 @@ class ProductForm(forms.ModelForm):
             'quantity',
             'category',
             'image',
-            'size',
             'warranty_period',
             'refurbishment_details',
             'thrift_condition_details'
@@ -51,6 +50,11 @@ class ProductForm(forms.ModelForm):
             'refurbishment_details': forms.Textarea(attrs={'rows': 4}),
             'thrift_condition_details': forms.Textarea(attrs={'rows': 4}),
         }
+
+class ProductSizeForm(forms.ModelForm):
+    class Meta:
+        model = ProductSize
+        fields = ['size', 'stock', 'price_adjustment']
 
 class BiddingForm(forms.ModelForm):
     bid_amt = forms.DecimalField(

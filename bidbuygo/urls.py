@@ -1,11 +1,14 @@
 from django.urls import path
 from . import views
 
+app_name = 'bidbuygo'
+
 urlpatterns = [
     # Home and Product URLs
     path('', views.home, name='home'),
-    path('products/', views.product_list, name='product_list'),
+    path('products/', views.product_list, name='products'),
     path('products/<str:product_id>/', views.product_detail, name='product_detail'),
+    path('auctions/', views.auction_list, name='auctions'),
     
     # User Authentication URLs
     path('register/', views.user_registration, name='user_registration'),
@@ -19,6 +22,7 @@ urlpatterns = [
     path('orders/', views.order_list, name='order_list'),
     path('place_order/<str:product_id>/', views.place_order, name='place_order'),
     path('complete_payment/<str:order_id>/', views.complete_payment, name='complete_payment'),
+    path('add_to_cart/<str:product_id>/', views.add_to_cart, name='add_to_cart'),
     
     # Bidding URLs
     path('place_bid/<str:product_id>/', views.place_bid, name='place_bid'),

@@ -52,7 +52,7 @@ document.getElementById('rzp-button').onclick = function(e) {
                 "order_id": data.order_id,
                 "handler": function (response) {
                     // Handle the success callback
-                    window.location.href = "{% url 'payment_success' %}";
+                    window.location.href = "{% url 'bidbuygo:payment_callback' %}";
                 },
                 "prefill": {
                     "name": "{{ request.user.get_full_name }}",
