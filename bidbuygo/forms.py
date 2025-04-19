@@ -33,7 +33,7 @@ class ProductForm(forms.ModelForm):
     class Meta:
         model = Product
         fields = [
-            'name',
+            'product_name',
             'description',
             'price',
             'product_type',
@@ -41,11 +41,15 @@ class ProductForm(forms.ModelForm):
             'quantity',
             'category',
             'image',
-            'size'
+            'size',
+            'warranty_period',
+            'refurbishment_details',
+            'thrift_condition_details'
         ]
         widgets = {
             'description': forms.Textarea(attrs={'rows': 4}),
-            'price': forms.NumberInput(attrs={'step': '0.01'}),
+            'refurbishment_details': forms.Textarea(attrs={'rows': 4}),
+            'thrift_condition_details': forms.Textarea(attrs={'rows': 4}),
         }
 
 class BiddingForm(forms.ModelForm):

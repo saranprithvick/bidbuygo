@@ -9,22 +9,22 @@ class SizeAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'price', 'size', 'quantity', 'product_type', 'product_condition', 'auction_status')
-    list_filter = ('category', 'product_type', 'product_condition', 'auction_status', 'size')
-    search_fields = ('name', 'description', 'size')
+    list_display = ('product_name', 'category', 'price', 'size', 'quantity', 'product_type', 'product_condition', 'auction_status')
+    list_filter = ('category', 'product_type', 'product_condition', 'auction_status')
+    search_fields = ('product_name', 'description', 'size')
     list_editable = ('price', 'quantity', 'size')
     fieldsets = (
         ('Basic Information', {
-            'fields': ('name', 'description', 'category', 'image')
+            'fields': ('product_name', 'description', 'category', 'image')
         }),
         ('Pricing and Inventory', {
             'fields': ('price', 'quantity', 'size')
         }),
         ('Product Details', {
-            'fields': ('product_type', 'product_condition')
+            'fields': ('product_type', 'product_condition', 'warranty_period', 'refurbishment_details', 'thrift_condition_details')
         }),
         ('Auction Settings', {
-            'fields': ('auction_status', 'last_bid_time'),
+            'fields': ('auction_status', 'last_bid_time', 'current_bid'),
             'classes': ('collapse',)
         })
     )
