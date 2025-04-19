@@ -1,0 +1,48 @@
+{% extends 'bidbuygo/base.html' %}
+{% load static %}
+
+{% block title %}My Orders - BidBuyGo{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>My Orders</h2>
+    {% if orders %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Order ID</th>
+                    <th>Date</th>
+                    <th>Product</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>{{ order.razorpay_order_id }}</td>
+                    <td>{{ order.created_at|date:"M d, Y" }}</td>
+                    <td>{{ order.product.name }}</td>
+                    <td>₹{{ order.amount }}</td>
+                    <td>
+                        <span class="badge {% if order.status == 'completed' %}bg-success{% elif order.status == 'pending' %}bg-warning{% else %}bg-danger{% endif %}">
+                            {{ order.status|title }}
+                        </span>
+                    </td>
+                    <td>
+                        <a href="{% url 'bidbuygo:order_detail' order.id %}" class="btn btn-sm btn-primary">View Details</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        You haven't placed any orders yet.
+    </div>
+    {% endif %}
+</div>
+{% endblock %} 

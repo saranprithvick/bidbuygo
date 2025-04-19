@@ -1,0 +1,44 @@
+{% extends 'bidbuygo/base.html' %}
+{% load static %}
+
+{% block title %}Bid Success - BidBuyGo{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Bid Placed Successfully!</h4>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                    </div>
+                    <h5 class="card-title">Your Bid Details</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Product:</strong> {{ product.name }}</p>
+                            <p><strong>Your Bid Amount:</strong> ₹{{ bid.bid_amt }}</p>
+                            <p><strong>Bid Time:</strong> {{ bid.bid_time|date:"F j, Y, g:i a" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Current Highest Bid:</strong> ₹{{ product.current_bid }}</p>
+                            <p><strong>Minimum Bid:</strong> ₹{{ product.price }}</p>
+                            <p><strong>Bid Status:</strong> <span class="badge bg-warning">{{ bid.bid_status }}</span></p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <a href="{% url 'bidbuygo:product_detail' product_id=product.product_id %}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left"></i> Back to Product
+                        </a>
+                        <a href="{% url 'bidbuygo:auctions' %}" class="btn btn-secondary">
+                            <i class="fas fa-gavel"></i> View Other Auctions
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

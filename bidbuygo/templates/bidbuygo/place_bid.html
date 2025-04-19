@@ -1,75 +1,95 @@
 {% extends 'bidbuygo/base.html' %}
+{% load static %}
+
+{% block title %}Place Bid - {{ product.product_name }}{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
+<div class="container">
+    <div class="row">
         <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h3 class="mb-0">Place Bid for {{ product.product_name }}</h3>
-                </div>
-                <div class="card-body">
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            {% if product.image %}
-                            <img src="{{ product.image.url }}" class="img-fluid rounded" alt="{{ product.product_name }}">
-                            {% else %}
-                            <div class="bg-light d-flex align-items-center justify-content-center rounded" style="height: 200px;">
-                                <span class="text-muted">No image available</span>
-                            </div>
-                            {% endif %}
-                        </div>
-                        <div class="col-md-6">
-                            <h5>Current Highest Bid: ${{ bidding_info.bid_amt|default:product.price }}</h5>
-                            <p class="text-muted">Starting Price: ${{ product.price }}</p>
-                            <p class="text-muted">Condition: {{ product.product_condition }}</p>
-                        </div>
+            <h1 class="mb-4">Place Bid on {{ product.product_name }}</h1>
+            
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert {% if message.tags == 'warning' %}alert-danger{% else %}alert-{{ message.tags }}{% endif %} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
-
+                {% endfor %}
+            {% endif %}
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Current Bid: ₹{{ product.current_bid }}</h5>
+                    <h6 class="card-subtitle mb-2 text-muted">Minimum Bid Amount: ₹{{ minimum_bid }}</h6>
+                    <p class="card-text">{{ product.description }}</p>
+                    
+                    {% if product.image %}
+                        <img src="{{ product.image.url }}" class="img-fluid mb-3" alt="{{ product.product_name }}">
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Place Your Bid</h5>
                     <form method="post">
                         {% csrf_token %}
-                        {% if form.errors %}
-                            <div class="alert alert-danger">
-                                Please correct the errors below.
-                            </div>
-                        {% endif %}
-                        
                         <div class="mb-3">
-                            <label for="bid_amt" class="form-label">Your Bid Amount ($)</label>
-                            <input type="number" class="form-control" id="bid_amt" name="bid_amt" 
-                                   min="{{ bidding_info.bid_amt|default:product.price|add:'1' }}" step="0.01" required>
-                            <small class="text-muted">Minimum bid: ${{ bidding_info.bid_amt|default:product.price|add:'1' }}</small>
+                            {{ form.bid_amt.label_tag }}
+                            {{ form.bid_amt }}
+                            {% if form.bid_amt.errors %}
+                                <div class="alert alert-danger">
+                                    {{ form.bid_amt.errors }}
+                                </div>
+                            {% endif %}
+                            <small class="form-text text-muted">Your bid must be at least ₹{{ minimum_bid }} and higher than the current bid.</small>
+                            
+                            {% if messages %}
+                                {% for message in messages %}
+                                    <div class="alert alert-danger mt-2 mb-0">
+                                        {{ message }}
+                                    </div>
+                                {% endfor %}
+                            {% endif %}
                         </div>
-                        
-                        <div class="mb-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="is_auto_bid" name="is_auto_bid">
-                                <label class="form-check-label" for="is_auto_bid">
-                                    Enable Auto-Bidding
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-3" id="auto_bid_limit_div" style="display: none;">
-                            <label for="auto_bid_limit" class="form-label">Maximum Auto-Bid Amount ($)</label>
-                            <input type="number" class="form-control" id="auto_bid_limit" name="auto_bid_limit" 
-                                   min="{{ bidding_info.bid_amt|default:product.price|add:'1' }}" step="0.01">
-                        </div>
-                        
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">Place Bid</button>
-                            <a href="{% url 'product_detail' product.product_id %}" class="btn btn-outline-secondary">Cancel</a>
-                        </div>
+                        <button type="submit" class="btn btn-primary">Place Bid</button>
                     </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Bid History</h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Bidder</th>
+                                    <th>Amount</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for bid in bid_history %}
+                                    <tr>
+                                        <td>{{ bid.user.username }}</td>
+                                        <td>₹{{ bid.bid_amt }}</td>
+                                        <td>{{ bid.bid_time|date:"M d, Y H:i" }}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="3" class="text-center">No bids yet</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-document.getElementById('is_auto_bid').addEventListener('change', function() {
-    document.getElementById('auto_bid_limit_div').style.display = this.checked ? 'block' : 'none';
-});
-</script>
 {% endblock %} 

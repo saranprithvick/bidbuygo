@@ -40,22 +40,25 @@ class ProductAdmin(admin.ModelAdmin):
         })
     )
 
+@admin.register(Orders)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ('order_id', 'user', 'product', 'price_amt', 'order_status', 'order_date')
     list_filter = ('order_status', 'order_date')
-    search_fields = ('order_id', 'user__username', 'product__product_name')
+    search_fields = ('order_id', 'user__email', 'product__product_name')
     readonly_fields = ('order_date',)
 
+@admin.register(Bidding)
 class BiddingAdmin(admin.ModelAdmin):
     list_display = ('user', 'product', 'bid_amt', 'bid_status', 'bid_time')
-    list_filter = ('bid_status', 'is_auto_bid')
     search_fields = ('user__username', 'product__product_name')
     readonly_fields = ('bid_time',)
 
+@admin.register(ProductReview)
 class ProductReviewAdmin(admin.ModelAdmin):
-    list_display = ('user', 'product', 'rating', 'created_at', 'is_verified_purchase')
-    list_filter = ('rating', 'is_verified_purchase')
-    search_fields = ('user__username', 'product__product_name', 'review_text')
+    list_display = ('user', 'product', 'rating', 'created_at')
+    list_filter = ('rating', 'created_at')
+    search_fields = ('user__email', 'product__product_name', 'review_text')
+    readonly_fields = ('created_at', 'updated_at')
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
@@ -65,6 +68,7 @@ class TransactionAdmin(admin.ModelAdmin):
     search_fields = ['payment_id', 'order__id', 'order__user__username']
     date_hierarchy = 'created_at'
 
+@admin.register(Seller)
 class SellerAdmin(admin.ModelAdmin):
     list_display = ('seller_name',)
     search_fields = ('seller_name',)
@@ -75,12 +79,3 @@ class ProductSizeAdmin(admin.ModelAdmin):
     list_filter = ('size',)
     search_fields = ('product__product_name',)
     list_editable = ('stock', 'price_adjustment')
-
-# Register models with their custom admin classes
-admin.site.register(Orders, OrderAdmin)
-admin.site.register(Bidding, BiddingAdmin)
-admin.site.register(ProductReview, ProductReviewAdmin)
-admin.site.register(Seller, SellerAdmin)
-admin.site.register(Delivery)
-admin.site.register(Tracking)
-admin.site.register(Inventory)

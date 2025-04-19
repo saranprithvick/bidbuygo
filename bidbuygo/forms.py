@@ -1,6 +1,6 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import User, Product, Bidding, ProductReview, Orders, Seller, Transaction, ProductSize
+from .models import User, Product, Bidding, ProductReview, Orders, Seller, Transaction, ProductSize, UserProfile, Address
 from django.core.validators import MinValueValidator
 from decimal import Decimal
 
@@ -79,9 +79,14 @@ class BiddingForm(forms.ModelForm):
 class ReviewForm(forms.ModelForm):
     class Meta:
         model = ProductReview
-        fields = ['rating', 'review_text', 'images']
+        fields = ['rating', 'review_text']
         widgets = {
-            'review_text': forms.Textarea(attrs={'rows': 4}),
+            'rating': forms.RadioSelect(choices=ProductReview.RATING_CHOICES),
+            'review_text': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 4,
+                'placeholder': 'Share your experience with this product...'
+            })
         }
 
 class OrderForm(forms.ModelForm):
@@ -115,34 +120,56 @@ class SearchForm(forms.Form):
     )
 
 class BidForm(forms.Form):
-    bid_amount = forms.DecimalField(
-        max_digits=10,
+    bid_amt = forms.DecimalField(
+        label='Your Bid Amount',
+        min_value=Decimal('0.01'),
         decimal_places=2,
-        min_value=0.01,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter your bid amount',
+            'step': '0.01'
+        })
     )
-    enable_auto_bid = forms.BooleanField(
-        required=False,
-        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
-    )
-    auto_bid_limit = forms.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        required=False,
-        min_value=0.01,
-        widget=forms.NumberInput(attrs={'class': 'form-control'})
-    )
+    
+    def clean_bid_amt(self):
+        bid_amt = self.cleaned_data['bid_amt']
+        if bid_amt <= 0:
+            raise forms.ValidationError("Bid amount must be greater than 0")
+        return bid_amt
+
+class UserProfileForm(forms.ModelForm):
+    class Meta:
+        model = UserProfile
+        fields = ['phone_number', 'profile_picture']
+        widgets = {
+            'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'profile_picture': forms.FileInput(attrs={'class': 'form-control'}),
+        }
+
+class AddressForm(forms.ModelForm):
+    class Meta:
+        model = Address
+        fields = ['address_type', 'full_name', 'phone_number', 'address_line1', 
+                 'address_line2', 'city', 'state', 'postal_code', 'country', 'is_default']
+        widgets = {
+            'address_type': forms.Select(attrs={'class': 'form-control'}),
+            'full_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
+            'address_line1': forms.TextInput(attrs={'class': 'form-control'}),
+            'address_line2': forms.TextInput(attrs={'class': 'form-control'}),
+            'city': forms.TextInput(attrs={'class': 'form-control'}),
+            'state': forms.TextInput(attrs={'class': 'form-control'}),
+            'postal_code': forms.TextInput(attrs={'class': 'form-control'}),
+            'country': forms.TextInput(attrs={'class': 'form-control'}),
+            'is_default': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
 
     def clean(self):
         cleaned_data = super().clean()
-        enable_auto_bid = cleaned_data.get('enable_auto_bid')
-        auto_bid_limit = cleaned_data.get('auto_bid_limit')
-        bid_amount = cleaned_data.get('bid_amount')
-
-        if enable_auto_bid and not auto_bid_limit:
-            raise forms.ValidationError("Auto-bid limit is required when auto-bidding is enabled")
-
-        if enable_auto_bid and auto_bid_limit and auto_bid_limit <= bid_amount:
-            raise forms.ValidationError("Auto-bid limit must be greater than your bid amount")
-
+        is_default = cleaned_data.get('is_default')
+        
+        if is_default:
+            # If this address is set as default, unset all other default addresses
+            Address.objects.filter(user=self.instance.user, is_default=True).update(is_default=False)
+        
         return cleaned_data 

@@ -7,24 +7,25 @@
 <div class="container">
     <h1 class="mb-4">Active Auctions</h1>
     
-    {% if auctions %}
-        <div class="row">
-            {% for auction in auctions %}
+    {% if ends_soon %}
+        <h2 class="mb-3">Ending Soon</h2>
+        <div class="row mb-5">
+            {% for auction in ends_soon %}
                 <div class="col-md-4 mb-4">
                     <div class="card h-100">
                         {% if auction.image %}
-                            <img src="{{ auction.image.url }}" class="card-img-top" alt="{{ auction.name }}">
+                            <img src="{{ auction.image.url }}" class="card-img-top" alt="{{ auction.product_name }}">
                         {% else %}
                             <img src="{% static 'images/no-image.jpg' %}" class="card-img-top" alt="No image available">
                         {% endif %}
                         
                         <div class="card-body">
-                            <h5 class="card-title">{{ auction.name }}</h5>
+                            <h5 class="card-title">{{ auction.product_name }}</h5>
                             <p class="card-text">{{ auction.description|truncatewords:20 }}</p>
                             
                             <div class="d-flex justify-content-between align-items-center">
                                 <span class="text-primary">Current Bid: ₹{{ auction.current_bid }}</span>
-                                <span class="text-muted">Ends in: {{ auction.auction_end_time|timeuntil }}</span>
+                                <span class="text-danger">Last Bid: {% if auction.last_bid_time %}{{ auction.last_bid_time|date:"M d, Y H:i" }}{% else %}None{% endif %}</span>
                             </div>
                             
                             <div class="mt-3">
@@ -38,6 +39,64 @@
                 </div>
             {% endfor %}
         </div>
+    {% endif %}
+    
+    <h2 class="mb-3">All Auctions</h2>
+    {% if other_auctions %}
+        <div class="row">
+            {% for auction in other_auctions %}
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100">
+                        {% if auction.image %}
+                            <img src="{{ auction.image.url }}" class="card-img-top" alt="{{ auction.product_name }}">
+                        {% else %}
+                            <img src="{% static 'images/no-image.jpg' %}" class="card-img-top" alt="No image available">
+                        {% endif %}
+                        
+                        <div class="card-body">
+                            <h5 class="card-title">{{ auction.product_name }}</h5>
+                            <p class="card-text">{{ auction.description|truncatewords:20 }}</p>
+                            
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-primary">Current Bid: ₹{{ auction.current_bid }}</span>
+                                <span class="text-muted">Last Bid: {% if auction.last_bid_time %}{{ auction.last_bid_time|date:"M d, Y H:i" }}{% else %}None{% endif %}</span>
+                            </div>
+                            
+                            <div class="mt-3">
+                                <a href="{% url 'bidbuygo:product_detail' auction.product_id %}" class="btn btn-primary">View Details</a>
+                                {% if user.is_authenticated %}
+                                    <a href="{% url 'bidbuygo:place_bid' auction.product_id %}" class="btn btn-success">Place Bid</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        {% if other_auctions.has_other_pages %}
+            <nav aria-label="Page navigation" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if other_auctions.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ other_auctions.previous_page_number }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in other_auctions.paginator.page_range %}
+                        <li class="page-item {% if num == other_auctions.number %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endfor %}
+                    
+                    {% if other_auctions.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ other_auctions.next_page_number }}">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
     {% else %}
         <div class="alert alert-info">
             No active auctions at the moment. Please check back later!

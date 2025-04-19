@@ -1,0 +1,127 @@
+{% extends 'bidbuygo/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h4>Delivery Information</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6>Tracking Number</h6>
+                            <p>{{ delivery.tracking_number }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Courier Service</h6>
+                            <p>{{ delivery.courier_service }}</p>
+                        </div>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6>Status</h6>
+                            <span class="badge {% if delivery.status == 'delivered' %}bg-success{% elif delivery.status == 'failed' %}bg-danger{% else %}bg-warning{% endif %}">
+                                {{ delivery.get_status_display }}
+                            </span>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Estimated Delivery</h6>
+                            <p>{{ delivery.estimated_delivery_date|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+                    {% if delivery.actual_delivery_date %}
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h6>Actual Delivery Date</h6>
+                            <p>{{ delivery.actual_delivery_date|date:"M d, Y" }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if delivery.notes %}
+                    <div class="row">
+                        <div class="col-12">
+                            <h6>Notes</h6>
+                            <p>{{ delivery.notes }}</p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h4>Tracking History</h4>
+                </div>
+                <div class="card-body">
+                    {% if tracking_updates %}
+                    <div class="timeline">
+                        {% for update in tracking_updates %}
+                        <div class="timeline-item">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">{{ update.status }}</h6>
+                                <p class="mb-1">{{ update.description }}</p>
+                                <small class="text-muted">
+                                    {{ update.location }} - {{ update.timestamp|date:"M d, Y H:i" }}
+                                </small>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No tracking updates available yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h4>Delivery Address</h4>
+                </div>
+                <div class="card-body">
+                    <address>
+                        {{ delivery.delivery_address.full_name }}<br>
+                        {{ delivery.delivery_address.address_line1 }}<br>
+                        {% if delivery.delivery_address.address_line2 %}
+                        {{ delivery.delivery_address.address_line2 }}<br>
+                        {% endif %}
+                        {{ delivery.delivery_address.city }}, {{ delivery.delivery_address.state }} {{ delivery.delivery_address.postal_code }}<br>
+                        {{ delivery.delivery_address.country }}
+                    </address>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -30px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #007bff;
+}
+
+.timeline-content {
+    padding-left: 20px;
+    border-left: 2px solid #dee2e6;
+}
+</style>
+{% endblock %} 

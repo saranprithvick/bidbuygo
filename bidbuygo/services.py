@@ -150,5 +150,6 @@ class BiddingService:
             'current_bid': current_bid.bid_amt if current_bid else product.price,
             'time_remaining': product.auction_end_date - timezone.now().date() if product.auction_end_date else None,
             'bid_count': Bidding.objects.filter(product=product).count(),
-            'highest_bidder': current_bid.user if current_bid else None
+            'highest_bidder': current_bid.user if current_bid else None,
+            'has_ended': product.auction_status == 'Ended' if hasattr(product, 'auction_status') else False
         } 

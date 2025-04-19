@@ -5,6 +5,15 @@
 <div class="container py-5">
     <h1 class="mb-4">Shopping Cart</h1>
     
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+    
     {% if cart_items %}
         <div class="table-responsive">
             <table class="table">
@@ -41,7 +50,8 @@
                         <td>
                             <form method="post" action="{% url 'bidbuygo:update_cart' item.product.product_id %}" class="d-flex align-items-center">
                                 {% csrf_token %}
-                                <input type="number" name="quantity" value="{{ item.quantity }}" min="0" max="{{ item.product.stock }}" class="form-control form-control-sm" style="width: 70px;">
+                                <input type="hidden" name="size" value="{{ item.size }}">
+                                <input type="number" name="quantity" value="{{ item.quantity }}" min="1" max="{{ item.product.quantity }}" class="form-control form-control-sm" style="width: 70px;">
                                 <button type="submit" class="btn btn-sm btn-outline-primary ms-2">Update</button>
                             </form>
                         </td>
@@ -49,7 +59,8 @@
                         <td>
                             <form method="post" action="{% url 'bidbuygo:remove_from_cart' item.product.product_id %}" class="d-inline">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                                <input type="hidden" name="size" value="{{ item.size }}">
+                                <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to remove this item?')">Remove</button>
                             </form>
                         </td>
                     </tr>
@@ -70,9 +81,10 @@
         </div>
     {% else %}
         <div class="text-center py-5">
+            <i class="fas fa-shopping-cart fa-4x text-muted mb-3"></i>
             <h3>Your cart is empty</h3>
-            <p class="text-muted">Browse our products and add items to your cart.</p>
-            <a href="{% url 'bidbuygo:products' %}" class="btn btn-primary mt-3">Start Shopping</a>
+            <p class="text-muted">Looks like you haven't added any items to your cart yet.</p>
+            <a href="{% url 'bidbuygo:products' %}" class="btn btn-primary">Start Shopping</a>
         </div>
     {% endif %}
 </div>

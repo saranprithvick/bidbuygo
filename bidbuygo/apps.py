@@ -1,4 +1,5 @@
 from django.apps import AppConfig
+from django.db import connection
 
 
 class BidbuygoConfig(AppConfig):
@@ -6,5 +7,13 @@ class BidbuygoConfig(AppConfig):
     name = 'bidbuygo'
 
     def ready(self):
-        from .db_functions import create_database_objects
-        create_database_objects()
+        # Only create database objects if the tables exist
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='bidbuygo_bidding'")
+                if cursor.fetchone():
+                    from .db_functions import create_database_objects
+                    create_database_objects()
+        except Exception:
+            # If there's any error (like table doesn't exist), just pass
+            pass
