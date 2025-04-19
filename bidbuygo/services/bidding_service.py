@@ -182,5 +182,6 @@ class BiddingService:
             'total_bids': total_bids,
             'time_remaining': f"{time_remaining:.1f} hours" if time_remaining else "No bids yet",
             'auction_status': product.auction_status,
-            'last_bid_time': product.last_bid_time
+            'last_bid_time': product.last_bid_time,
+            'has_ended': product.auction_status == 'Ended'
         } 

@@ -15,9 +15,6 @@
 
         <!-- Product Details -->
         <div class="col-md-6">
-            <h2>{{ product.product_name }}</h2>
-            <p class="text-muted">{{ product.description }}</p>
-            
             {% if product.product_type == 'Auction' %}
                 <div class="card mb-4">
                     <div class="card-body">
@@ -30,7 +27,7 @@
                                 {% endif %}
                             </div>
                         {% else %}
-                            <p>Current Bid: ${{ auction_info.current_bid }}</p>
+                            <p>Current Bid: ₹{{ auction_info.current_bid }}</p>
                             <p>Total Bids: {{ auction_info.total_bids }}</p>
                             {% if auction_info.highest_bidder %}
                                 <p>Highest Bidder: 
@@ -44,10 +41,10 @@
                             <p>Time Left: {{ auction_info.time_left }} days</p>
                             
                             {% if user.is_authenticated and not auction_info.has_ended %}
-                                <form method="post" action="{% url 'place_bid' product.product_id %}" class="mt-3">
+                                <form method="post" action="{% url 'bidbuygo:place_bid' product.product_id %}" class="mt-3">
                                     {% csrf_token %}
                                     <div class="form-group">
-                                        <label for="{{ bid_form.bid_amount.id_for_label }}">Your Bid ($)</label>
+                                        <label for="{{ bid_form.bid_amount.id_for_label }}">Your Bid (₹)</label>
                                         {{ bid_form.bid_amount }}
                                     </div>
                                     
@@ -59,7 +56,7 @@
                                     </div>
                                     
                                     <div class="form-group auto-bid-limit" style="display: none;">
-                                        <label for="{{ bid_form.auto_bid_limit.id_for_label }}">Auto-bid Limit ($)</label>
+                                        <label for="{{ bid_form.auto_bid_limit.id_for_label }}">Auto-bid Limit (₹)</label>
                                         {{ bid_form.auto_bid_limit }}
                                     </div>
                                     
@@ -68,9 +65,9 @@
                                 
                                 {% if user_highest_bid %}
                                     <div class="alert alert-info mt-3">
-                                        Your highest bid: ${{ user_highest_bid.bid_amt }}
+                                        Your highest bid: ₹{{ user_highest_bid.bid_amt }}
                                         {% if user_highest_bid.is_auto_bid %}
-                                            (Auto-bid up to ${{ user_highest_bid.auto_bid_limit }})
+                                            (Auto-bid up to ₹{{ user_highest_bid.auto_bid_limit }})
                                         {% endif %}
                                     </div>
                                 {% endif %}
@@ -81,15 +78,37 @@
                     </div>
                 </div>
             {% else %}
-                <p class="h4 mb-3">${{ product.price }}</p>
-                {% if product.quantity > 0 %}
-                    <form method="post" action="{% url 'add_to_cart' product.product_id %}">
+                <div class="product-details">
+                    <h1>{{ product.product_name }}</h1>
+                    <p class="price">₹{{ product.price }}</p>
+                    <p class="description">{{ product.description }}</p>
+                    
+                    <div class="size-selection">
+                        <h3>Available Sizes</h3>
+                        <div class="size-grid">
+                            {% for size in product.sizes.all %}
+                            <div class="size-option">
+                                <input type="radio" name="size" id="size_{{ size.size }}" value="{{ size.size }}" 
+                                       {% if not size.stock %}disabled{% endif %}>
+                                <label for="size_{{ size.size }}">
+                                    {{ size.size }}
+                                    <span class="stock-info">({{ size.stock }} left)</span>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <form method="post" action="{% url 'bidbuygo:add_to_cart' product.product_id %}" class="add-to-cart-form">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-primary">Add to Cart</button>
+                        <div class="quantity-selector">
+                            <label for="quantity">Quantity:</label>
+                            <input type="number" name="quantity" id="quantity" value="1" min="1" max="99">
+                        </div>
+                        <input type="hidden" name="selected_size" id="selected_size">
+                        <button type="submit" class="add-to-cart-btn">Add to Cart</button>
                     </form>
-                {% else %}
-                    <button class="btn btn-secondary" disabled>Out of Stock</button>
-                {% endif %}
+                </div>
             {% endif %}
 
             <!-- Product Information -->
@@ -98,11 +117,11 @@
                 <table class="table">
                     <tr>
                         <th>Condition:</th>
-                        <td>{{ product.product_condition }}</td>
+                        <td>{{ product.product_condition|title }}</td>
                     </tr>
                     <tr>
                         <th>Category:</th>
-                        <td>{{ product.category.name }}</td>
+                        <td>{{ product.category.name|title }}</td>
                     </tr>
                     {% if product.warranty_period %}
                     <tr>
@@ -152,18 +171,86 @@
     </div>
 </div>
 
-{% block extra_js %}
+<style>
+.size-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.size-option {
+    position: relative;
+}
+
+.size-option input[type="radio"] {
+    display: none;
+}
+
+.size-option label {
+    display: block;
+    padding: 0.5rem;
+    text-align: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.size-option input[type="radio"]:checked + label {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.size-option input[type="radio"]:disabled + label {
+    background-color: #f5f5f5;
+    color: #999;
+    cursor: not-allowed;
+}
+
+.stock-info {
+    display: block;
+    font-size: 0.8em;
+    color: #666;
+}
+
+.quantity-selector {
+    margin: 1rem 0;
+}
+
+.add-to-cart-btn {
+    width: 100%;
+    padding: 1rem;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.add-to-cart-btn:hover {
+    background-color: #0056b3;
+}
+</style>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const enableAutoBidCheckbox = document.querySelector('#{{ bid_form.enable_auto_bid.id_for_label }}');
-        const autoBidLimitDiv = document.querySelector('.auto-bid-limit');
-        
-        if (enableAutoBidCheckbox && autoBidLimitDiv) {
-            enableAutoBidCheckbox.addEventListener('change', function() {
-                autoBidLimitDiv.style.display = this.checked ? 'block' : 'none';
-            });
+document.addEventListener('DOMContentLoaded', function() {
+    const sizeInputs = document.querySelectorAll('input[name="size"]');
+    const selectedSizeInput = document.getElementById('selected_size');
+    const addToCartForm = document.querySelector('.add-to-cart-form');
+    
+    sizeInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            selectedSizeInput.value = this.value;
+        });
+    });
+    
+    addToCartForm.addEventListener('submit', function(e) {
+        if (!selectedSizeInput.value) {
+            e.preventDefault();
+            alert('Please select a size');
         }
     });
+});
 </script>
-{% endblock %}
 {% endblock %} 

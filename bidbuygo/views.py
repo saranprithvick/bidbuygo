@@ -20,6 +20,7 @@ import razorpay
 from django.conf import settings
 from django.urls import reverse
 from django.contrib.auth.models import User
+from django.db import connection
 
 # Initialize Razorpay client only if settings are configured
 try:
@@ -44,7 +45,7 @@ def home(request):
 
 def product_list(request):
     form = SearchForm(request.GET)
-    products = Product.objects.filter(is_available=True)
+    products = Product.objects.filter(is_available=True).order_by('-created_at', 'product_name')  # Fixed field name
     
     if form.is_valid():
         query = form.cleaned_data.get('query')
@@ -53,7 +54,7 @@ def product_list(request):
         
         if query:
             products = products.filter(
-                Q(name__icontains=query) |
+                Q(product_name__icontains=query) |  # Fixed field name
                 Q(description__icontains=query)
             )
         
@@ -105,14 +106,14 @@ def product_detail(request, product_id):
     bid_form = None
     user_highest_bid = None
     
-    if product.product_type == 'Auction':
+    if product.product_type.lower() == 'auction':  # Case-insensitive comparison
         auction_info = BiddingService.get_auction_status(product)
         if request.user.is_authenticated and not auction_info['has_ended']:
             bid_form = BidForm()
             user_highest_bid = Bidding.objects.filter(
                 user=request.user,
                 product=product,
-                bid_status='Pending'
+                bid_status='pending'  # Changed to lowercase to be consistent
             ).order_by('-bid_amt').first()
     
     context = {
@@ -130,27 +131,90 @@ def product_detail(request, product_id):
 @login_required
 def add_to_cart(request, product_id):
     product = get_object_or_404(Product, product_id=product_id)
-    
-    if product.quantity <= 0:
-        messages.error(request, 'Sorry, this product is out of stock.')
-        return redirect('bidbuygo:product_detail', product_id=product_id)
-    
-    # Get or create cart for the user
     cart, created = Cart.objects.get_or_create(user=request.user)
     
-    # Check if product is already in cart
-    cart_item, created = CartItem.objects.get_or_create(
-        cart=cart,
-        product=product,
-        defaults={'quantity': 1}
-    )
-    
-    if not created:
-        cart_item.quantity += 1
-        cart_item.save()
-    
-    messages.success(request, f'{product.product_name} has been added to your cart.')
+    if request.method == 'POST':
+        quantity = int(request.POST.get('quantity', 1))
+        selected_size = request.POST.get('selected_size')
+        
+        if not selected_size:
+            messages.error(request, 'Please select a size')
+            return redirect('bidbuygo:product_detail', product_id=product_id)
+            
+        # Check if the selected size exists and has enough stock
+        try:
+            product_size = ProductSize.objects.get(product=product, size=selected_size)
+            if product_size.stock < quantity:
+                messages.error(request, f'Only {product_size.stock} items available in size {selected_size}')
+                return redirect('bidbuygo:product_detail', product_id=product_id)
+        except ProductSize.DoesNotExist:
+            messages.error(request, 'Invalid size selected')
+            return redirect('bidbuygo:product_detail', product_id=product_id)
+        
+        # Get or create cart item with the selected size
+        cart_item, created = CartItem.objects.get_or_create(
+            cart=cart,
+            product=product,
+            size=selected_size,
+            defaults={'quantity': quantity}
+        )
+        
+        if not created:
+            cart_item.quantity += quantity
+            cart_item.save()
+            
+        messages.success(request, f'{product.product_name} (Size: {selected_size}) added to cart')
+        return redirect('bidbuygo:cart')
+        
     return redirect('bidbuygo:product_detail', product_id=product_id)
+
+@login_required
+def update_cart(request, product_id):
+    if request.method == 'POST':
+        cart = Cart.objects.get(user=request.user)
+        cart_item = get_object_or_404(CartItem, cart=cart, product__product_id=product_id)
+        quantity = int(request.POST.get('quantity', 1))
+        
+        if quantity <= 0:
+            cart_item.delete()
+            messages.success(request, 'Item removed from cart.')
+        else:
+            if quantity > cart_item.product.quantity:
+                messages.error(request, 'Sorry, not enough stock available.')
+                return redirect('bidbuygo:cart')
+            
+            cart_item.quantity = quantity
+            cart_item.save()
+            messages.success(request, 'Cart updated successfully.')
+    
+    return redirect('bidbuygo:cart')
+
+@login_required
+def remove_from_cart(request, product_id):
+    if request.method == 'POST':
+        cart = Cart.objects.get(user=request.user)
+        cart_item = get_object_or_404(CartItem, cart=cart, product__product_id=product_id)
+        cart_item.delete()
+        messages.success(request, 'Item removed from cart.')
+    
+    return redirect('bidbuygo:cart')
+
+@login_required
+def view_cart(request):
+    cart = Cart.objects.get(user=request.user)
+    cart_items = CartItem.objects.filter(cart=cart)
+    
+    # Get cart total from database function
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT total_price FROM cart_totals WHERE cart_id = %s", [cart.id])
+        result = cursor.fetchone()
+        cart_total = result[0] if result else 0
+    
+    context = {
+        'cart_items': cart_items,
+        'cart_total': cart_total,
+    }
+    return render(request, 'bidbuygo/cart.html', context)
 
 def user_registration(request):
     if request.method == 'POST':
@@ -199,13 +263,13 @@ def place_bid(request, product_id):
             )
             
             messages.success(request, 'Your bid has been placed successfully!')
-            return redirect('product_detail', product_id=product_id)
+            return redirect('bidbuygo:product_detail', product_id=product_id)
             
         except Exception as e:
             messages.error(request, str(e))
-            return redirect('product_detail', product_id=product_id)
+            return redirect('bidbuygo:product_detail', product_id=product_id)
             
-    return redirect('product_detail', product_id=product_id)
+    return redirect('bidbuygo:product_detail', product_id=product_id)
 
 def get_auction_status(request, product_id):
     product = get_object_or_404(Product, product_id=product_id)
@@ -227,7 +291,7 @@ def add_review(request, product_id):
     
     if existing_review:
         messages.error(request, 'You have already reviewed this product.')
-        return redirect('product_detail', product_id=product_id)
+        return redirect('bidbuygo:product_detail', product_id=product_id)
     
     if request.method == 'POST':
         form = ReviewForm(request.POST, request.FILES)
@@ -236,16 +300,12 @@ def add_review(request, product_id):
             review.user = request.user
             review.product = product
             review.save()
-            messages.success(request, 'Your review has been added successfully!')
-            return redirect('product_detail', product_id=product_id)
+            messages.success(request, 'Review added successfully!')
+            return redirect('bidbuygo:product_detail', product_id=product_id)
     else:
         form = ReviewForm()
     
-    context = {
-        'form': form,
-        'product': product,
-    }
-    return render(request, 'bidbuygo/add_review.html', context)
+    return render(request, 'bidbuygo/add_review.html', {'form': form, 'product': product})
 
 @login_required
 def user_profile(request):
@@ -258,13 +318,13 @@ def user_profile(request):
         })
     except Exception as e:
         messages.error(request, f'Error accessing profile: {str(e)}')
-        return redirect('home')
+        return redirect('bidbuygo:home')
 
 @login_required
 def seller_dashboard(request):
     if not hasattr(request.user, 'seller'):
         messages.error(request, 'You are not authorized to access the seller dashboard.')
-        return redirect('home')
+        return redirect('bidbuygo:home')
     
     seller = request.user.seller
     products = Product.objects.filter(seller=seller)
@@ -285,7 +345,7 @@ def seller_dashboard(request):
 def add_product(request):
     if not hasattr(request.user, 'seller'):
         messages.error(request, 'You are not authorized to add products.')
-        return redirect('home')
+        return redirect('bidbuygo:home')
     
     if request.method == 'POST':
         form = ProductForm(request.POST, request.FILES)
@@ -295,7 +355,7 @@ def add_product(request):
             product.product_id = str(uuid.uuid4())[:8]
             product.save()
             messages.success(request, 'Product added successfully!')
-            return redirect('seller_dashboard')
+            return redirect('bidbuygo:seller_dashboard')
     else:
         form = ProductForm()
     
@@ -327,7 +387,7 @@ def place_order(request, product_id):
             product.save()
             
             messages.success(request, 'Order placed successfully!')
-            return redirect('order_list')
+            return redirect('bidbuygo:order_list')
     else:
         form = OrderForm()
     
@@ -361,7 +421,7 @@ def complete_payment(request, order_id):
         order.save()
         
         messages.success(request, 'Payment completed successfully!')
-        return redirect('order_list')
+        return redirect('bidbuygo:order_list')
     
     context = {
         'order': order,
@@ -377,16 +437,16 @@ def my_bids(request):
 def end_auction(request, product_id):
     if not request.user.is_staff:
         messages.error(request, 'Only staff members can end auctions')
-        return redirect('product_detail', product_id=product_id)
+        return redirect('bidbuygo:product_detail', product_id=product_id)
         
     product = get_object_or_404(Product, product_id=product_id)
     try:
         BiddingService.end_auction(product)
-        messages.success(request, 'Auction has been ended successfully')
+        messages.success(request, 'Auction ended successfully!')
     except Exception as e:
         messages.error(request, str(e))
         
-    return redirect('product_detail', product_id=product_id)
+    return redirect('bidbuygo:product_detail', product_id=product_id)
 
 def payment_page(request, order_id):
     try:
@@ -398,7 +458,7 @@ def payment_page(request, order_id):
         return render(request, 'bidbuygo/payment.html', context)
     except Order.DoesNotExist:
         messages.error(request, 'Order not found.')
-        return redirect('home')
+        return redirect('bidbuygo:home')
 
 def create_payment(request, order_id):
     try:
@@ -505,3 +565,51 @@ def initiate_refund(request, transaction_id):
             'success': False,
             'error': str(e)
         }, status=400)
+
+@login_required
+def checkout(request):
+    cart = Cart.objects.get(user=request.user)
+    cart_items = CartItem.objects.filter(cart=cart)
+    cart_total = sum(item.product.price * item.quantity for item in cart_items)
+    
+    if request.method == 'POST':
+        # Create a new order
+        order = Order.objects.create(
+            user=request.user,
+            order_id=str(uuid.uuid4())[:8],
+            total_amount=cart_total,
+            order_date=timezone.now(),
+            order_status='Pending'
+        )
+        
+        # Create order items from cart items
+        for cart_item in cart_items:
+            OrderItem.objects.create(
+                order=order,
+                product=cart_item.product,
+                quantity=cart_item.quantity,
+                price=cart_item.product.price,
+                size=cart_item.size
+            )
+            
+            # Update product stock
+            product_size = ProductSize.objects.get(product=cart_item.product, size=cart_item.size)
+            product_size.stock -= cart_item.quantity
+            product_size.save()
+            
+            # If stock is 0, mark product as unavailable
+            if product_size.stock == 0:
+                product_size.is_available = False
+                product_size.save()
+        
+        # Clear the cart
+        cart_items.delete()
+        
+        messages.success(request, 'Order placed successfully!')
+        return redirect('bidbuygo:payment_page', order_id=order.order_id)
+    
+    context = {
+        'cart_items': cart_items,
+        'cart_total': cart_total,
+    }
+    return render(request, 'bidbuygo/checkout.html', context)

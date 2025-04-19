@@ -278,18 +278,20 @@ class Cart(models.Model):
 class CartItem(models.Model):
     cart = models.ForeignKey(Cart, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity = models.IntegerField(default=1)
+    quantity = models.PositiveIntegerField(default=1)
+    size = models.CharField(max_length=10)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"{self.quantity}x {self.product.product_name} in {self.cart}"
-
     class Meta:
-        verbose_name = "Cart Item"
-        verbose_name_plural = "Cart Items"
-        db_table = 'CART_ITEM'
-        unique_together = ('cart', 'product')
+        unique_together = ('cart', 'product', 'size')
+
+    def __str__(self):
+        return f"{self.quantity}x {self.product.product_name} (Size: {self.size})"
+
+    @property
+    def total_price(self):
+        return self.product.price * self.quantity
 
 class Bidding(models.Model):
     BID_STATUS_CHOICES = [

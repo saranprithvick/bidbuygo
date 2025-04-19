@@ -23,6 +23,10 @@ urlpatterns = [
     path('place_order/<str:product_id>/', views.place_order, name='place_order'),
     path('complete_payment/<str:order_id>/', views.complete_payment, name='complete_payment'),
     path('add_to_cart/<str:product_id>/', views.add_to_cart, name='add_to_cart'),
+    path('cart/', views.view_cart, name='cart'),
+    path('update_cart/<str:product_id>/', views.update_cart, name='update_cart'),
+    path('remove_from_cart/<str:product_id>/', views.remove_from_cart, name='remove_from_cart'),
+    path('checkout/', views.checkout, name='checkout'),
     
     # Bidding URLs
     path('place_bid/<str:product_id>/', views.place_bid, name='place_bid'),

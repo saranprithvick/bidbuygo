@@ -133,6 +133,31 @@ def create_database_objects():
         FROM bidbuygo_product;
         """)
 
+        # Create function to calculate cart total
+        cursor.execute("""
+        CREATE FUNCTION IF NOT EXISTS calculate_cart_total(cart_id INTEGER)
+        RETURNS DECIMAL(10,2)
+        BEGIN
+            DECLARE total DECIMAL(10,2);
+            SELECT COALESCE(SUM(p.price * ci.quantity), 0)
+            INTO total
+            FROM bidbuygo_cartitem ci
+            JOIN bidbuygo_product p ON ci.product_id = p.product_id
+            WHERE ci.cart_id = cart_id;
+            RETURN total;
+        END;
+        """)
+        
+        # Create view for cart totals
+        cursor.execute("""
+        CREATE VIEW IF NOT EXISTS cart_totals AS
+        SELECT 
+            c.id as cart_id,
+            c.user_id,
+            calculate_cart_total(c.id) as total_price
+        FROM bidbuygo_cart c;
+        """)
+
 def setup_database():
     """Function to be called from Django shell to set up database objects"""
     try:

@@ -1,0 +1,82 @@
+{% extends 'bidbuygo/base.html' %}
+{% load static %}
+
+{% block title %}Checkout - BidBuyGo{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-4">Checkout</h1>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Order Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Size</th>
+                                    <th>Price</th>
+                                    <th>Quantity</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in cart_items %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if item.product.image %}
+                                                <img src="{{ item.product.image.url }}" alt="{{ item.product.product_name }}" class="img-thumbnail me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                                            {% else %}
+                                                <div class="bg-light me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                                    <span class="text-muted">No image</span>
+                                                </div>
+                                            {% endif %}
+                                            <div>
+                                                <h6 class="mb-0">{{ item.product.product_name }}</h6>
+                                                <small class="text-muted">{{ item.product.get_category_display }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ item.size }}</td>
+                                    <td>₹{{ item.product.price }}</td>
+                                    <td>{{ item.quantity }}</td>
+                                    <td>₹{{ item.total_price }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="4" class="text-end"><strong>Total:</strong></td>
+                                    <td><strong>₹{{ cart_total }}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Payment</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-3">Please review your order before proceeding to payment.</p>
+                    <form method="post">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary w-100">Proceed to Payment</button>
+                    </form>
+                    <a href="{% url 'bidbuygo:cart' %}" class="btn btn-outline-secondary w-100 mt-2">Back to Cart</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
