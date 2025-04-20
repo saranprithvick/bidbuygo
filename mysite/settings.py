@@ -147,3 +147,12 @@ STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY', 'your_secret_key')
 STRIPE_WEBHOOK_SECRET = os.getenv('STRIPE_WEBHOOK_SECRET', 'your_webhook_secret')
 
 AUTH_USER_MODEL = 'bidbuygo.User'
+
+# Email Settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')  # Your Gmail address
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')  # Your Gmail app password
+DEFAULT_FROM_EMAIL = os.getenv('EMAIL_HOST_USER')  # Same as EMAIL_HOST_USER

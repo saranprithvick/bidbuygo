@@ -11,9 +11,12 @@ urlpatterns = [
     path('auctions/', views.auction_list, name='auctions'),
     
     # User Authentication URLs
-    path('register/', views.user_registration, name='user_registration'),
+    path('register/', views.register_email, name='register_email'),
+    path('verify-email/<str:email>/', views.verify_email, name='verify_email'),
+    path('set-password/<str:email>/', views.set_password, name='set_password'),
     path('login/', views.user_login, name='user_login'),
     path('logout/', views.user_logout, name='user_logout'),
+    path('check-email/', views.check_email, name='check_email'),
     
     # User Profile URLs
     path('profile/', views.user_profile, name='user_profile'),
@@ -51,4 +54,7 @@ urlpatterns = [
 
     path('order/<int:order_id>/delivery/', views.delivery_detail, name='delivery_detail'),
     path('delivery/<int:delivery_id>/update/', views.update_delivery_status, name='update_delivery_status'),
+    path('send-otp/', views.send_otp, name='send_otp'),
+    path('verify-otp/', views.verify_otp, name='verify_otp'),
+    path('email-verification/', views.email_verification, name='email_verification'),
 ] 

@@ -461,3 +461,34 @@ class Tracking(models.Model):
         ordering = ['-event_time']
         verbose_name = "Tracking Update"
         verbose_name_plural = "Tracking Updates"
+
+class OTP(models.Model):
+    email = models.EmailField()
+    otp = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_verified = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    def __str__(self):
+        return f"{self.email} - {self.otp}"
+
+class UnverifiedUser(models.Model):
+    email = models.EmailField(unique=True)
+    otp = models.CharField(max_length=6)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_verified = models.BooleanField(default=False)
+    expires_at = models.DateTimeField()
+
+    def is_expired(self):
+        return timezone.now() > self.expires_at
+
+    def __str__(self):
+        return self.email
+
+    class Meta:
+        verbose_name = "Unverified User"
+        verbose_name_plural = "Unverified Users"
+        db_table = 'UNVERIFIED_USER'

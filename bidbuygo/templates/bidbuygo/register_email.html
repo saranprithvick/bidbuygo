@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">Register</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" id="registration-form">
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="email">Email Address</label>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <small class="form-text text-muted">We'll send you an OTP to verify your email.</small>
+                            <div id="email-feedback" class="invalid-feedback"></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3" id="submit-btn">Send Verification Code</button>
+                    </form>
+                    <div class="text-center mt-3">
+                        <p class="mb-0">Already have an account? <a href="{% url 'bidbuygo:user_login' %}">Sign in</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const emailInput = document.getElementById('email');
+    const submitBtn = document.getElementById('submit-btn');
+    const emailFeedback = document.getElementById('email-feedback');
+    let emailTimeout;
+
+    emailInput.addEventListener('input', function() {
+        clearTimeout(emailTimeout);
+        emailTimeout = setTimeout(checkEmail, 500);  // Debounce the check
+    });
+
+    function checkEmail() {
+        const email = emailInput.value;
+        if (!email) return;
+
+        fetch(`{% url 'bidbuygo:check_email' %}?email=${encodeURIComponent(email)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.is_taken) {
+                    emailInput.classList.add('is-invalid');
+                    emailInput.classList.remove('is-valid');
+                    emailFeedback.textContent = 'This email is already registered. Please sign in instead or use a different email address.';
+                    submitBtn.disabled = true;
+                } else {
+                    emailInput.classList.add('is-valid');
+                    emailInput.classList.remove('is-invalid');
+                    emailFeedback.textContent = '';
+                    submitBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    // Validate email format
+    emailInput.addEventListener('input', function() {
+        const email = this.value;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        
+        if (!emailRegex.test(email)) {
+            emailInput.classList.add('is-invalid');
+            emailFeedback.textContent = 'Please enter a valid email address';
+            submitBtn.disabled = true;
+        }
+    });
+});
+</script>
+{% endblock %} 

@@ -17,11 +17,14 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from django.conf import settings
 from django.urls import reverse
-from django.contrib.auth.models import User
 from django.db import connection
-from .models import Order, OrderItem, ProductSize, Cart, CartItem
+from .models import Order, OrderItem, ProductSize, Cart, CartItem, User
 import stripe
 from django.db import transaction
+from django.core.mail import send_mail
+from datetime import timedelta
+import random
+from .models import UnverifiedUser
 
 def home(request):
     """Home page view"""
@@ -272,17 +275,131 @@ def view_cart(request):
         messages.error(request, f'An error occurred: {str(e)}')
         return redirect('bidbuygo:home')
 
-def user_registration(request):
+def register_email(request):
     if request.method == 'POST':
-        form = UserRegistrationForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            login(request, user)  
-            messages.success(request, 'Registration successful! Welcome to BidBuyGo.')
-            return redirect('bidbuygo:home')
-    else:
-        form = UserRegistrationForm()
-    return render(request, 'bidbuygo/register.html', {'form': form})
+        email = request.POST.get('email')
+        print(f"DEBUG: Registration attempt for email: {email}")  # Debug print
+        
+        # Check if email already exists in verified users
+        if User.objects.filter(email=email).exists():
+            print(f"DEBUG: Email {email} already registered")  # Debug print
+            messages.error(request, 'This email is already registered. Please sign in instead or use a different email address.')
+            return redirect('bidbuygo:register_email')
+        
+        # Generate 6-digit OTP
+        otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        print(f"DEBUG: Generated OTP: {otp}")  # Debug print
+        
+        # Delete any existing unverified user with this email
+        UnverifiedUser.objects.filter(email=email).delete()
+        
+        # Create new unverified user
+        unverified_user = UnverifiedUser.objects.create(
+            email=email,
+            otp=otp,
+            expires_at=timezone.now() + timedelta(minutes=10)
+        )
+        print(f"DEBUG: Created unverified user record")  # Debug print
+        
+        # Send OTP email
+        from django.conf import settings
+        print(f"DEBUG: Attempting to send email from {settings.EMAIL_HOST_USER} to {email}")  # Debug print
+        try:
+            send_mail(
+                'Your OTP for Email Verification',
+                f'Your OTP is: {otp}. It will expire in 10 minutes.',
+                settings.EMAIL_HOST_USER,
+                [email],
+                fail_silently=False,
+            )
+            print("DEBUG: Email sent successfully")  # Debug print
+        except Exception as e:
+            print(f"DEBUG: Error sending email: {str(e)}")  # Debug print
+            messages.error(request, 'Error sending OTP. Please try again.')
+            return redirect('bidbuygo:register_email')
+        
+        messages.success(request, 'OTP sent to your email')
+        return redirect('bidbuygo:verify_email', email=email)
+    
+    return render(request, 'bidbuygo/register_email.html')
+
+def verify_email(request, email):
+    if request.method == 'POST':
+        otp = request.POST.get('otp')
+        try:
+            unverified_user = UnverifiedUser.objects.get(email=email)
+            
+            if unverified_user.is_expired():
+                messages.error(request, 'OTP has expired. Please request a new one.')
+                return redirect('bidbuygo:register_email')
+            
+            if unverified_user.otp != otp:
+                messages.error(request, 'Invalid OTP')
+                return redirect('bidbuygo:verify_email', email=email)
+            
+            # Mark as verified and redirect to password setup
+            unverified_user.is_verified = True
+            unverified_user.save()
+            return redirect('bidbuygo:set_password', email=email)
+            
+        except UnverifiedUser.DoesNotExist:
+            messages.error(request, 'Invalid email or OTP expired')
+            return redirect('bidbuygo:register_email')
+    
+    return render(request, 'bidbuygo/verify_email.html', {'email': email})
+
+def set_password(request, email):
+    try:
+        unverified_user = UnverifiedUser.objects.get(email=email, is_verified=True)
+    except UnverifiedUser.DoesNotExist:
+        messages.error(request, 'Please verify your email first')
+        return redirect('bidbuygo:register_email')
+    
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
+        
+        # Password validation
+        if len(password) < 8:
+            messages.error(request, 'Password must be at least 8 characters long')
+            return redirect('bidbuygo:set_password', email=email)
+            
+        if not any(c.isalpha() for c in password):
+            messages.error(request, 'Password must contain at least one letter')
+            return redirect('bidbuygo:set_password', email=email)
+            
+        if not any(c.isdigit() for c in password):
+            messages.error(request, 'Password must contain at least one number')
+            return redirect('bidbuygo:set_password', email=email)
+            
+        if not any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in password):
+            messages.error(request, 'Password must contain at least one special character')
+            return redirect('bidbuygo:set_password', email=email)
+            
+        if ' ' in password:
+            messages.error(request, 'Password cannot contain spaces')
+            return redirect('bidbuygo:set_password', email=email)
+        
+        if password != confirm_password:
+            messages.error(request, 'Passwords do not match')
+            return redirect('bidbuygo:set_password', email=email)
+        
+        # Create the user with the custom User model
+        user = User.objects.create_user(
+            email=email,
+            password=password
+        )
+        
+        # Delete the unverified user
+        unverified_user.delete()
+        
+        # Automatically log in the user
+        login(request, user)
+        
+        messages.success(request, 'Account created successfully!')
+        return redirect('bidbuygo:home')  # Redirect to home page after successful registration
+    
+    return render(request, 'bidbuygo/set_password.html', {'email': email})
 
 def user_login(request):
     if request.method == 'POST':
@@ -934,3 +1051,65 @@ def update_delivery_status(request, delivery_id):
     except Exception as e:
         messages.error(request, f'Error updating delivery status: {str(e)}')
         return redirect('bidbuygo:home')
+
+def send_otp(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        # Generate 6-digit OTP
+        otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+        
+        # Delete any existing OTPs for this email
+        OTP.objects.filter(email=email).delete()
+        
+        # Create new OTP
+        otp_obj = OTP.objects.create(
+            email=email,
+            otp=otp,
+            expires_at=timezone.now() + timedelta(minutes=5)
+        )
+        
+        # Send email
+        send_mail(
+            'Your OTP for Email Verification',
+            f'Your OTP is: {otp}. It will expire in 5 minutes.',
+            'your-email@example.com',  # Replace with your email
+            [email],
+            fail_silently=False,
+        )
+        
+        return JsonResponse({'status': 'success', 'message': 'OTP sent successfully'})
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+def verify_otp(request):
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        otp = request.POST.get('otp')
+        
+        try:
+            otp_obj = OTP.objects.get(email=email, otp=otp)
+            
+            if otp_obj.is_expired():
+                return JsonResponse({'status': 'error', 'message': 'OTP has expired'})
+            
+            if otp_obj.is_verified:
+                return JsonResponse({'status': 'error', 'message': 'OTP already verified'})
+            
+            otp_obj.is_verified = True
+            otp_obj.save()
+            
+            return JsonResponse({'status': 'success', 'message': 'Email verified successfully'})
+            
+        except OTP.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Invalid OTP'})
+    
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
+
+def email_verification(request):
+    return render(request, 'email_verification.html')
+
+def check_email(request):
+    if request.method == 'GET':
+        email = request.GET.get('email')
+        is_taken = User.objects.filter(email=email).exists()
+        return JsonResponse({'is_taken': is_taken})
+    return JsonResponse({'error': 'Invalid request'}, status=400)
