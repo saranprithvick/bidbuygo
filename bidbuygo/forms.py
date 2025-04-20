@@ -56,14 +56,23 @@ class UserRegistrationForm(UserCreationForm):
         user.email = self.cleaned_data['email']
         if commit:
             user.save()
-            # Create user profile with address information
+            # Create user profile
             UserProfile.objects.create(
                 user=user,
+                phone_number=self.cleaned_data['mobile_number']
+            )
+            # Create default address
+            Address.objects.create(
+                user=user,
+                address_type='home',
+                full_name=user.email.split('@')[0],  # Use email username as default name
                 phone_number=self.cleaned_data['mobile_number'],
-                address=self.cleaned_data['address'],
+                address_line1=self.cleaned_data['address'],
                 city=self.cleaned_data['city'],
                 state=self.cleaned_data['state'],
-                pincode=self.cleaned_data['pincode']
+                postal_code=self.cleaned_data['pincode'],
+                country='India',
+                is_default=True
             )
         return user
 
