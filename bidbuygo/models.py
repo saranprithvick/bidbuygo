@@ -166,23 +166,47 @@ class Product(models.Model):
         verbose_name_plural = "Products"
         db_table = 'PRODUCT'
 
-class Orders(models.Model):
-    order_id = models.CharField(max_length=25,primary_key=True)
-    user = models.ForeignKey(User,on_delete=models.CASCADE)
-    product = models.ForeignKey(Product,on_delete=models.CASCADE)
-    order_address = models.TextField(null=False)
-    price_amt = models.DecimalField(max_digits=10,decimal_places=2,null=False)
-    order_date = models.DateTimeField(null=False)
-    order_status = models.CharField(max_length=50,null=False)
-
+class Order(models.Model):
+    STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('PAID', 'Paid'),
+        ('SHIPPED', 'Shipped'),
+        ('DELIVERED', 'Delivered'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+    
+    order_id = models.CharField(max_length=50, unique=True, null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING')
+    payment_method = models.CharField(max_length=20, default='COD')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Essential shipping fields for COD
+    full_name = models.CharField(max_length=100)
+    phone_number = models.CharField(max_length=15)
+    address_line1 = models.CharField(max_length=100)
+    address_line2 = models.CharField(max_length=100, blank=True, null=True)
+    city = models.CharField(max_length=50)
+    state = models.CharField(max_length=50)
+    postal_code = models.CharField(max_length=10)
+    country = models.CharField(max_length=50, default='India')
+    
+    def save(self, *args, **kwargs):
+        if not self.order_id:
+            self.order_id = str(uuid.uuid4())[:8]
+        if not self.amount and hasattr(self, 'items'):
+            self.amount = sum(item.total_price for item in self.items.all())
+        super().save(*args, **kwargs)
+    
     def __str__(self):
-        return f"Order {self.order_id} by {self.user.email}"
+        return f"Order {self.order_id} - {self.user.email}"
     
     class Meta:
-        verbose_name = "Order"
-        verbose_name_plural = "Orders"
-        db_table = 'ORDERS'
-    
+        ordering = ['-created_at']
+        db_table = 'bidbuygo_order'
+
 class Delivery(models.Model):
     DELIVERY_STATUS_CHOICES = [
         ('pending', 'Pending'),
@@ -194,35 +218,23 @@ class Delivery(models.Model):
         ('returned', 'Returned'),
     ]
 
-    order = models.OneToOneField(Orders, on_delete=models.CASCADE, related_name='delivery')
-    tracking_number = models.CharField(max_length=50, unique=True)
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='delivery')
+    tracking_number = models.CharField(max_length=50, unique=True, default='TRACK-0000')
     courier_service = models.CharField(max_length=100)
     status = models.CharField(max_length=20, choices=DELIVERY_STATUS_CHOICES, default='pending')
     estimated_delivery_date = models.DateField(null=True, blank=True)
     actual_delivery_date = models.DateField(null=True, blank=True)
     delivery_address = models.ForeignKey('Address', on_delete=models.SET_NULL, null=True)
     notes = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
-        return f"Delivery {self.tracking_number} - {self.order.id}"
+        return f"Delivery {self.tracking_number} - {self.order.order_id}"
 
     class Meta:
+        verbose_name = "Delivery"
         verbose_name_plural = "Deliveries"
-
-class Tracking(models.Model):
-    delivery = models.ForeignKey(Delivery, on_delete=models.CASCADE, related_name='tracking_updates')
-    location = models.CharField(max_length=255)
-    status = models.CharField(max_length=100)
-    description = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"Tracking update for {self.delivery.tracking_number} at {self.timestamp}"
-
-    class Meta:
-        ordering = ['-timestamp']
 
 class Inventory(models.Model):
     inventory_id = models.CharField(max_length=25, primary_key=True)
@@ -238,25 +250,6 @@ class Inventory(models.Model):
         verbose_name_plural = "Inventory"
         db_table = 'INVENTORY'
     
-class Order(models.Model):
-    ORDER_STATUS = (
-        ('PENDING', 'Pending'),
-        ('PAID', 'Paid'),
-        ('FAILED', 'Failed'),
-        ('REFUNDED', 'Refunded')
-    )
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20, choices=ORDER_STATUS, default='PENDING')
-    razorpay_order_id = models.CharField(max_length=100, blank=True, null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    def __str__(self):
-        return f"Order {self.id} - {self.user.username}"
-
 class Transaction(models.Model):
     TRANSACTION_STATUS = (
         ('SUCCESS', 'Success'),
@@ -265,16 +258,14 @@ class Transaction(models.Model):
     )
     
     order = models.ForeignKey(Order, on_delete=models.CASCADE)
-    payment_id = models.CharField(max_length=100, default='')
-    refund_id = models.CharField(max_length=100, blank=True, null=True)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
-    status = models.CharField(max_length=20, choices=TRANSACTION_STATUS, default='FAILED')
-    mode_of_payment = models.CharField(max_length=50, default='RAZORPAY')
+    status = models.CharField(max_length=20, choices=TRANSACTION_STATUS, default='SUCCESS')
+    payment_id = models.CharField(max_length=100, null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"Transaction {self.payment_id} - {self.status}"
+        return f"Transaction for Order {self.order.order_id} - {self.status}"
 
 class Cart(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -286,7 +277,10 @@ class Cart(models.Model):
 
     @property
     def total_price(self):
-        return sum(item.total_price for item in self.items.all())
+        cart_items = self.items.all()
+        if not cart_items.exists():
+            return 0
+        return sum(item.total_price for item in cart_items)
 
     class Meta:
         verbose_name = "Cart"
@@ -309,7 +303,10 @@ class CartItem(models.Model):
 
     @property
     def total_price(self):
-        return self.product.price * self.quantity
+        try:
+            return float(self.product.price) * self.quantity
+        except (TypeError, ValueError):
+            return 0
 
 class Bidding(models.Model):
     BID_STATUS_CHOICES = [
@@ -381,17 +378,17 @@ class OrderItem(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    class Meta:
-        verbose_name = "Order Item"
-        verbose_name_plural = "Order Items"
-        db_table = 'ORDER_ITEM'
-
     def __str__(self):
-        return f"{self.quantity} x {self.product.product_name} (Size: {self.size})"
+        return f"{self.quantity}x {self.product.product_name} ({self.size})"
 
     @property
     def total_price(self):
-        return self.price * self.quantity
+        return self.quantity * self.price
+
+    class Meta:
+        verbose_name = "Order Item"
+        verbose_name_plural = "Order Items"
+        db_table = 'bidbuygo_orderitem'
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
@@ -437,3 +434,30 @@ class Address(models.Model):
         verbose_name_plural = "Addresses"
         db_table = 'ADDRESS'
         ordering = ['-is_default', '-created_at']
+
+class Tracking(models.Model):
+    TRACKING_EVENT_CHOICES = [
+        ('order_placed', 'Order Placed'),
+        ('order_confirmed', 'Order Confirmed'),
+        ('order_packed', 'Order Packed'),
+        ('order_shipped', 'Order Shipped'),
+        ('out_for_delivery', 'Out for Delivery'),
+        ('delivered', 'Delivered'),
+        ('delivery_failed', 'Delivery Failed'),
+        ('return_initiated', 'Return Initiated'),
+        ('return_completed', 'Return Completed'),
+    ]
+
+    delivery = models.ForeignKey(Delivery, on_delete=models.CASCADE, related_name='tracking_updates')
+    event = models.CharField(max_length=50, choices=TRACKING_EVENT_CHOICES, default='order_placed')
+    event_time = models.DateTimeField(default=timezone.now)
+    additional_info = models.TextField(blank=True, null=True)
+    is_customer_notified = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.get_event_display()} - {self.event_time.strftime('%Y-%m-%d %H:%M')}"
+
+    class Meta:
+        ordering = ['-event_time']
+        verbose_name = "Tracking Update"
+        verbose_name_plural = "Tracking Updates"

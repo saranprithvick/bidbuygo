@@ -1,0 +1,147 @@
+{% extends 'bidbuygo/base.html' %}
+{% load static %}
+
+{% block title %}Add Review - {{ product.product_name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="text-center">Add Review for {{ product.product_name }}</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Rating *</label>
+                            <div class="star-rating-container">
+                                <div class="star-rating">
+                                    <span class="star" data-value="1">★</span>
+                                    <span class="star" data-value="2">★</span>
+                                    <span class="star" data-value="3">★</span>
+                                    <span class="star" data-value="4">★</span>
+                                    <span class="star" data-value="5">★</span>
+                                </div>
+                                <input type="hidden" name="rating" id="rating-input" value="">
+                                {% if form.rating.errors %}
+                                    <div class="alert alert-danger mt-1">
+                                        {{ form.rating.errors }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.review_text.id_for_label }}" class="form-label">Review *</label>
+                            {{ form.review_text }}
+                            {% if form.review_text.errors %}
+                                <div class="alert alert-danger mt-1">
+                                    {{ form.review_text.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="{{ form.images.id_for_label }}" class="form-label">Add Photos (Optional)</label>
+                            {{ form.images }}
+                            {% if form.images.errors %}
+                                <div class="alert alert-danger mt-1">
+                                    {{ form.images.errors }}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary">Submit Review</button>
+                            <a href="{% url 'bidbuygo:product_detail' product_id=product.product_id %}" class="btn btn-secondary ms-2">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .star-rating-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+    
+    .star-rating {
+        display: flex;
+        gap: 0.5rem;
+        font-size: 2.5rem;
+        cursor: pointer;
+        margin-bottom: 0.5rem;
+    }
+    
+    .star {
+        color: #ddd;
+        transition: color 0.2s;
+    }
+    
+    .star:hover,
+    .star.active {
+        color: #ffd700;
+    }
+    
+    .form-control {
+        margin-bottom: 0.5rem;
+    }
+    
+    textarea.form-control {
+        min-height: 150px;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const stars = document.querySelectorAll('.star');
+    const ratingInput = document.getElementById('rating-input');
+    
+    stars.forEach(star => {
+        star.addEventListener('click', function() {
+            const value = this.dataset.value;
+            ratingInput.value = value;
+            
+            // Update star colors
+            stars.forEach(s => {
+                if (s.dataset.value <= value) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            });
+        });
+        
+        star.addEventListener('mouseover', function() {
+            const value = this.dataset.value;
+            stars.forEach(s => {
+                if (s.dataset.value <= value) {
+                    s.style.color = '#ffd700';
+                } else {
+                    s.style.color = '#ddd';
+                }
+            });
+        });
+        
+        star.addEventListener('mouseout', function() {
+            const selectedValue = ratingInput.value;
+            stars.forEach(s => {
+                if (s.dataset.value <= selectedValue) {
+                    s.style.color = '#ffd700';
+                } else {
+                    s.style.color = '#ddd';
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %} 

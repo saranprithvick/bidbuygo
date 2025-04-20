@@ -48,6 +48,34 @@ def create_database_objects():
         END;
         """)
 
+        # Add a check to ensure tables exist before creating the trigger
+        cursor.execute("""
+        SELECT name FROM sqlite_master 
+        WHERE type='table' AND name IN ('bidbuygo_product', 'bidbuygo_order');
+        """)
+        tables = cursor.fetchall()
+        if len(tables) == 2:
+            cursor.execute("""
+            DROP TRIGGER IF EXISTS update_quantity_after_payment;
+            """)
+            cursor.execute("""
+            CREATE TRIGGER update_quantity_after_payment
+            AFTER UPDATE OF status ON bidbuygo_order
+            WHEN NEW.status = 'PAID' AND OLD.status != 'PAID'
+            BEGIN
+                UPDATE bidbuygo_product
+                SET quantity = quantity - 1
+                WHERE id = NEW.product_id;
+                
+                UPDATE bidbuygo_product
+                SET is_available = CASE 
+                    WHEN quantity = 0 THEN 0
+                    ELSE 1
+                END
+                WHERE id = NEW.product_id;
+            END;
+            """)
+
         # Trigger to update product bid information
         cursor.execute("""
         CREATE TRIGGER IF NOT EXISTS update_bid_info
@@ -157,6 +185,26 @@ def create_database_objects():
             calculate_cart_total(c.id) as total_price
         FROM bidbuygo_cart c;
         """)
+
+def create_triggers(apps, schema_editor):
+    with connection.cursor() as cursor:
+        # Create trigger for updating order status
+        cursor.execute("""
+            CREATE TRIGGER IF NOT EXISTS update_order_status
+            AFTER UPDATE ON bidbuygo_order
+            FOR EACH ROW
+            BEGIN
+                IF NEW.status = 'Delivered' AND OLD.status != 'Delivered' THEN
+                    UPDATE bidbuygo_orderitem
+                    SET status = 'Delivered'
+                    WHERE order_id = NEW.id;
+                END IF;
+            END;
+        """)
+
+def drop_triggers(apps, schema_editor):
+    with connection.cursor() as cursor:
+        cursor.execute("DROP TRIGGER IF EXISTS update_order_status")
 
 def setup_database():
     """Function to be called from Django shell to set up database objects"""

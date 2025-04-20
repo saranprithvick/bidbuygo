@@ -30,6 +30,7 @@ urlpatterns = [
     path('update_cart/<str:product_id>/', views.update_cart, name='update_cart'),
     path('remove_from_cart/<str:product_id>/', views.remove_from_cart, name='remove_from_cart'),
     path('checkout/', views.checkout, name='checkout'),
+    path('order/success/<str:order_id>/', views.order_success, name='order_success'),
     
     # Bidding URLs
     path('place_bid/<str:product_id>/', views.place_bid, name='place_bid'),
@@ -43,10 +44,10 @@ urlpatterns = [
     path('seller/add_product/', views.add_product, name='add_product'),
     
     # Payment URLs
-    path('payment/<int:order_id>/', views.payment_page, name='payment_page'),
-    path('payment/create/<int:order_id>/', views.create_payment, name='create_payment'),
-    path('payment/webhook/', views.stripe_webhook, name='stripe_webhook'),
-    path('payment/success/', views.payment_success, name='payment_success'),
+    # path('payment/<int:order_id>/', views.payment_page, name='payment_page'),
+    # path('payment/create/<int:order_id>/', views.create_payment, name='create_payment'),
+    # path('payment/webhook/', views.stripe_webhook, name='stripe_webhook'),
+    # path('payment/success/', views.payment_success, name='payment_success'),
 
     path('order/<int:order_id>/delivery/', views.delivery_detail, name='delivery_detail'),
     path('delivery/<int:delivery_id>/update/', views.update_delivery_status, name='update_delivery_status'),

@@ -14,37 +14,14 @@ from django.contrib.auth.forms import AuthenticationForm
 from .services.bidding_service import BiddingService
 from django.core.exceptions import ValidationError
 from django.views.decorators.csrf import csrf_exempt
-from .payment_utils import PaymentManager
 import json
-import razorpay
 from django.conf import settings
 from django.urls import reverse
 from django.contrib.auth.models import User
 from django.db import connection
 from .models import Order, OrderItem, ProductSize, Cart, CartItem
 import stripe
-
-# Initialize Razorpay client
-def get_razorpay_client():
-    try:
-        if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
-            print("Razorpay API keys are not configured")
-            print(f"Key ID: {settings.RAZORPAY_KEY_ID}")
-            print(f"Key Secret: {settings.RAZORPAY_KEY_SECRET}")
-            raise ValueError("Razorpay API keys are not configured")
-        
-        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-        print("Razorpay client initialized successfully")
-        return client
-    except Exception as e:
-        print(f"Error initializing Razorpay client: {str(e)}")
-        raise
-
-# Initialize Razorpay client
-client = get_razorpay_client()
-
-# Initialize Stripe
-stripe.api_key = settings.STRIPE_SECRET_KEY
+from django.db import transaction
 
 def home(request):
     """Home page view"""
@@ -83,8 +60,8 @@ def product_list(request):
     if product_type:
         products = products.filter(product_type=product_type)
     
-    # Order products
-    products = products.order_by('-created_at', 'product_name')
+    # Order products alphabetically by product name
+    products = products.order_by('product_name')
     
     # Get all categories for the filter dropdown
     categories = Category.objects.all()
@@ -414,19 +391,33 @@ def add_review(request, product_id):
         messages.error(request, 'You have already reviewed this product.')
         return redirect('bidbuygo:product_detail', product_id=product_id)
     
+    # Check if user has purchased this product
+    has_purchased = Order.objects.filter(
+        user=request.user,
+        product=product,
+        status='PAID'
+    ).exists()
+    
     if request.method == 'POST':
         form = ReviewForm(request.POST, request.FILES)
         if form.is_valid():
             review = form.save(commit=False)
             review.user = request.user
             review.product = product
+            review.is_verified_purchase = has_purchased
             review.save()
             messages.success(request, 'Review added successfully!')
             return redirect('bidbuygo:product_detail', product_id=product_id)
     else:
         form = ReviewForm()
     
-    return render(request, 'bidbuygo/add_review.html', {'form': form, 'product': product})
+    context = {
+        'form': form,
+        'product': product,
+        'has_purchased': has_purchased
+    }
+    
+    return render(request, 'bidbuygo/add_review.html', context)
 
 @login_required
 def user_profile(request):
@@ -775,63 +766,122 @@ def initiate_refund(request, transaction_id):
 
 @login_required
 def checkout(request):
+    if not request.user.is_authenticated:
+        return redirect('bidbuygo:login')
+    
+    cart = Cart.objects.filter(user=request.user).first()
+    if not cart or not cart.items.exists():
+        messages.warning(request, 'Your cart is empty.')
+        return redirect('bidbuygo:cart')
+    
+    if request.method == 'POST':
+        form = OrderForm(request.POST)
+        if form.is_valid():
+            try:
+                # Get form data
+                full_name = form.cleaned_data['full_name']
+                phone_number = form.cleaned_data['phone_number']
+                address_line1 = form.cleaned_data['address_line1']
+                address_line2 = form.cleaned_data['address_line2']
+                city = form.cleaned_data['city']
+                state = form.cleaned_data['state']
+                postal_code = form.cleaned_data['postal_code']
+                country = form.cleaned_data['country']
+
+                # Calculate total amount
+                total_amount = cart.total_price
+                
+                # Start transaction
+                with transaction.atomic():
+                    # Create order
+                    order = Order.objects.create(
+                        order_id=str(uuid.uuid4())[:8],
+                        user=request.user,
+                        amount=total_amount,
+                        status='PENDING',
+                        payment_method='COD',
+                        full_name=full_name,
+                        phone_number=phone_number,
+                        address_line1=address_line1,
+                        address_line2=address_line2,
+                        city=city,
+                        state=state,
+                        postal_code=postal_code,
+                        country=country
+                    )
+                    
+                    # Create order items and update stock
+                    for cart_item in cart.items.all():
+                        # Create order item
+                        OrderItem.objects.create(
+                            order=order,
+                            product=cart_item.product,
+                            quantity=cart_item.quantity,
+                            price=cart_item.product.price,
+                            size=cart_item.size
+                        )
+                        
+                        # Check stock availability
+                        product_size = ProductSize.objects.select_for_update().get(
+                            product=cart_item.product, 
+                            size=cart_item.size
+                        )
+                        
+                        if product_size.stock < cart_item.quantity:
+                            raise ValidationError(
+                                f"Sorry, only {product_size.stock} items available for {cart_item.product.product_name} in size {cart_item.size}"
+                            )
+                        
+                        # Update stock
+                        product_size.stock -= cart_item.quantity
+                        product_size.save()
+                        
+                        if product_size.stock <= 0:
+                            cart_item.product.is_available = False
+                            cart_item.product.save()
+                    
+                    # Create transaction record for COD
+                    Transaction.objects.create(
+                        order=order,
+                        amount=total_amount,
+                        status='SUCCESS',
+                        payment_id=f'COD-{order.order_id}'
+                    )
+                    
+                    # Clear the cart
+                    cart.items.all().delete()
+                    cart.delete()
+                    
+                    messages.success(request, 'Order placed successfully!')
+                    return redirect('bidbuygo:order_success', order_id=order.order_id)
+                    
+            except ValidationError as e:
+                messages.error(request, str(e))
+                return redirect('bidbuygo:cart')
+            except Exception as e:
+                messages.error(request, f'Error placing order: {str(e)}')
+                return redirect('bidbuygo:cart')
+    else:
+        form = OrderForm()
+
+    context = {
+        'form': form,
+        'cart': cart,
+    }
+    return render(request, 'bidbuygo/checkout.html', context)
+
+@login_required
+def order_success(request, order_id):
     try:
-        cart = Cart.objects.get(user=request.user)
-        cart_items = CartItem.objects.filter(cart=cart)
-        
-        if not cart_items.exists():
-            messages.error(request, 'Your cart is empty. Please add items before checkout.')
-            return redirect('bidbuygo:cart')
-            
-        cart_total = sum(item.product.price * item.quantity for item in cart_items)
-        
-        if request.method == 'POST':
-            # Create a new order
-            order = Order.objects.create(
-                user=request.user,
-                product=cart_items.first().product,  # Use the first product as the main product
-                amount=cart_total,
-                status='PENDING'
-            )
-            
-            # Create order items from cart items
-            for cart_item in cart_items:
-                OrderItem.objects.create(
-                    order=order,
-                    product=cart_item.product,
-                    quantity=cart_item.quantity,
-                    price=cart_item.product.price,
-                    size=cart_item.size
-                )
-                
-                # Update product stock
-                product_size = ProductSize.objects.get(product=cart_item.product, size=cart_item.size)
-                product_size.stock -= cart_item.quantity
-                product_size.save()
-                
-                # If stock is 0, mark product as unavailable
-                if product_size.stock == 0:
-                    product_size.is_available = False
-                    product_size.save()
-            
-            # Clear the cart
-            cart_items.delete()
-            
-            messages.success(request, 'Order placed successfully!')
-            return redirect('bidbuygo:payment_page', order_id=order.id)
-        
+        order = Order.objects.get(order_id=order_id, user=request.user)
         context = {
-            'cart_items': cart_items,
-            'cart_total': cart_total,
+            'order': order,
+            'page_title': 'Order Success'
         }
-        return render(request, 'bidbuygo/checkout.html', context)
-        
-    except Cart.DoesNotExist:
-        messages.error(request, 'Your cart is empty. Please add items before checkout.')
-        return redirect('bidbuygo:cart')
-    except Exception as e:
-        messages.error(request, f'An error occurred during checkout: {str(e)}')
-        return redirect('bidbuygo:cart')
+        return render(request, 'bidbuygo/order_success.html', context)
+    except Order.DoesNotExist:
+        messages.error(request, 'Order not found.')
+        return redirect('bidbuygo:home')
 
 @login_required
 def delivery_detail(request, order_id):

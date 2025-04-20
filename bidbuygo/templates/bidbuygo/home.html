@@ -4,31 +4,103 @@
 {% block title %}{{ site_name }} - Home{% endblock %}
 
 {% block content %}
+<!-- Hero Section -->
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-8 text-center">
-            <h1 class="display-4 mb-4">{{ site_name }}</h1>
+            <h1 class="display-3 fw-bold mb-4">Welcome to {{ site_name }}</h1>
             <p class="lead mb-5">{{ description }}</p>
             
-            <div class="card shadow-sm mb-4">
-                <div class="card-body">
-                    <h2 class="h4 mb-3">Why Choose {{ site_name }}?</h2>
-                    <ul class="list-unstyled">
-                        {% for feature in features %}
-                        <li class="mb-2">
-                            <i class="fas fa-check-circle text-success me-2"></i>
-                            {{ feature }}
-                        </li>
-                        {% endfor %}
-                    </ul>
-                </div>
-            </div>
-            
-            <div class="mt-5">
-                <a href="{% url 'bidbuygo:products' %}" class="btn btn-primary btn-lg me-3">Browse Products</a>
+            <div class="d-flex gap-3 justify-content-center">
+                <a href="{% url 'bidbuygo:products' %}" class="btn btn-primary btn-lg">Shop Now</a>
                 <a href="{% url 'bidbuygo:auctions' %}" class="btn btn-outline-primary btn-lg">View Auctions</a>
             </div>
         </div>
     </div>
 </div>
+
+<!-- Why Choose Us Section -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <div class="text-center mb-5">
+            <h2 class="display-5 fw-bold">Why Choose {{ site_name }}?</h2>
+            <p class="lead text-muted">Experience the difference with our premium shopping platform</p>
+        </div>
+        
+        <div class="row g-4 justify-content-center">
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-4">
+                            <i class="fas fa-gem fa-3x text-primary"></i>
+                        </div>
+                        <h3 class="h4 mb-3">Premium Products</h3>
+                        <p class="text-muted">Discover exclusive fashion items from top brands and designers, carefully curated for quality and style.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-4">
+                            <i class="fas fa-gavel fa-3x text-primary"></i>
+                        </div>
+                        <h3 class="h4 mb-3">Competitive Bidding</h3>
+                        <p class="text-muted">Participate in exciting auctions and get your favorite items at the best possible prices.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-4">
+                            <i class="fas fa-shield-alt fa-3x text-primary"></i>
+                        </div>
+                        <h3 class="h4 mb-3">Secure Transactions</h3>
+                        <p class="text-muted">Shop with confidence using our secure payment system and buyer protection policies.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-4">
+                            <i class="fas fa-truck fa-3x text-primary"></i>
+                        </div>
+                        <h3 class="h4 mb-3">Fast Delivery</h3>
+                        <p class="text-muted">Enjoy quick and reliable delivery services with real-time tracking for all your orders.</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-4">
+                            <i class="fas fa-undo fa-3x text-primary"></i>
+                        </div>
+                        <h3 class="h4 mb-3">Easy Returns</h3>
+                        <p class="text-muted">Shop worry-free with our hassle-free return policy and money-back guarantee.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Call to Action -->
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <h2 class="display-5 fw-bold mb-4">Ready to Start Shopping?</h2>
+                <p class="lead mb-4">Join thousands of satisfied customers who trust {{ site_name }} for their shopping needs.</p>
+                <a href="{% url 'bidbuygo:products' %}" class="btn btn-primary btn-lg">Explore Products</a>
+            </div>
+        </div>
+    </div>
+</section>
 {% endblock %} 

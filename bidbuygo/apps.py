@@ -1,5 +1,4 @@
 from django.apps import AppConfig
-from django.db import connection
 
 
 class BidbuygoConfig(AppConfig):
@@ -7,6 +6,9 @@ class BidbuygoConfig(AppConfig):
     name = 'bidbuygo'
 
     def ready(self):
+        # Import signals here to avoid circular imports
+        import bidbuygo.signals
+
         # Only create database objects if the tables exist
         try:
             with connection.cursor() as cursor:

@@ -40,12 +40,24 @@ class ProductAdmin(admin.ModelAdmin):
         })
     )
 
-@admin.register(Orders)
+@admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    list_display = ('order_id', 'user', 'product', 'price_amt', 'order_status', 'order_date')
-    list_filter = ('order_status', 'order_date')
-    search_fields = ('order_id', 'user__email', 'product__product_name')
-    readonly_fields = ('order_date',)
+    list_display = ('order_id', 'user', 'amount', 'status', 'payment_method', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('order_id', 'user__email', 'full_name', 'phone_number')
+    readonly_fields = ('created_at', 'updated_at')
+    fieldsets = (
+        ('Order Information', {
+            'fields': ('order_id', 'user', 'amount', 'status', 'payment_method')
+        }),
+        ('Shipping Information', {
+            'fields': ('full_name', 'phone_number', 'address_line1', 'address_line2', 'city', 'state', 'postal_code', 'country')
+        }),
+        ('Timestamps', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        })
+    )
 
 @admin.register(Bidding)
 class BiddingAdmin(admin.ModelAdmin):
@@ -62,11 +74,11 @@ class ProductReviewAdmin(admin.ModelAdmin):
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ['payment_id', 'order', 'amount', 'mode_of_payment', 'status', 'created_at']
-    list_filter = ['status', 'mode_of_payment', 'created_at']
-    readonly_fields = ['payment_id', 'refund_id', 'created_at', 'updated_at']
-    search_fields = ['payment_id', 'order__id', 'order__user__username']
-    date_hierarchy = 'created_at'
+    list_display = ('order', 'amount', 'status', 'created_at')
+    list_filter = ('status', 'created_at')
+    search_fields = ('order__order_id',)
+    readonly_fields = ('created_at', 'updated_at')
+    ordering = ('-created_at',)
 
 @admin.register(Seller)
 class SellerAdmin(admin.ModelAdmin):

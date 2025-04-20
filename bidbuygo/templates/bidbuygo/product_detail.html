@@ -15,7 +15,7 @@
 
         <!-- Product Details -->
         <div class="col-md-6">
-            <h1>{{ product.product_name }}</h1>
+    <h1>{{ product.product_name }}</h1>
             <p class="description">{{ product.description }}</p>
             
             {% if product.product_type == 'auction' %}
@@ -59,9 +59,9 @@
                                     </div>
                                     
                                     <div class="form-check mb-3">
-                                        <label class="form-check-label">
-                                            {{ bid_form.is_auto_bid }}
-                                            Enable Auto-bidding
+                                        <input class="form-check-input" type="checkbox" id="autoBid" name="is_auto_bid">
+                                        <label class="form-check-label" for="autoBid">
+                                            Enable Auto-bidding (Minimum bid: ₹{{ product.price }})
                                         </label>
                                     </div>
                                     
@@ -152,17 +152,78 @@
     </div>
 </div>
 
+<!-- Reviews Section -->
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <h3 class="mb-4">Customer Reviews</h3>
+            
+            <!-- Add Review Button -->
+            {% if user.is_authenticated %}
+                <div class="mb-4">
+                    <a href="{% url 'bidbuygo:add_review' product_id=product.product_id %}" class="btn btn-primary">
+                        Write a Review
+                    </a>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    Please <a href="{% url 'bidbuygo:user_login' %}">login</a> to write a review.
+                </div>
+            {% endif %}
+
+            <!-- Reviews List -->
+            <div class="reviews-container">
+                {% for review in product.productreview_set.all %}
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="reviewer-info">
+                                    <h5 class="mb-0">{{ review.user.email }}</h5>
+                                    <small class="text-muted">{{ review.created_at|date:"F d, Y" }}</small>
+                                </div>
+                                <div class="rating">
+                                    {% for i in "12345"|make_list %}
+                                        <span class="star {% if forloop.counter <= review.rating %}active{% endif %}">★</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <p class="card-text">{{ review.review_text }}</p>
+                            {% if review.images %}
+                                <div class="review-images mt-3">
+                                    <img src="{{ review.images.url }}" alt="Review image" class="img-thumbnail" style="max-width: 200px;">
+                                </div>
+                            {% endif %}
+                            {% if review.is_verified_purchase %}
+                                <span class="badge bg-success mt-2">Verified Purchase</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="alert alert-info">
+                        No reviews yet. Be the first to review this product!
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
+.size-selection {
+    margin-bottom: 20px;
+}
+
 .size-grid {
     display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
+    flex-direction: column;
+    gap: 0.5rem;
     margin: 1rem 0;
 }
 
 .size-option {
     position: relative;
-    flex: 0 0 auto;
+    width: 100%;
+    max-width: 200px;
 }
 
 .size-option input[type="radio"] {
@@ -172,11 +233,11 @@
 .size-option label {
     display: block;
     padding: 0.5rem 1rem;
-    text-align: center;
+    text-align: left;
     border: 1px solid #ddd;
     border-radius: 4px;
     cursor: pointer;
-    min-width: 60px;
+    width: 100%;
 }
 
 .size-option input[type="radio"]:checked + label {
@@ -192,7 +253,8 @@
 }
 
 .stock-info {
-    display: block;
+    display: inline-block;
+    margin-left: 10px;
     font-size: 0.8em;
     color: #666;
 }
@@ -247,11 +309,6 @@
     color: #ffc107;
 }
 
-.size-selection {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 15px;
-}
 .size-btn {
     padding: 8px 15px;
     border: 1px solid #ddd;
@@ -301,6 +358,44 @@
 }
 .bidder {
     color: #007bff;
+}
+
+.reviews-container {
+    margin-top: 2rem;
+}
+
+.rating {
+    display: flex;
+    gap: 0.2rem;
+    font-size: 1.5rem;
+}
+
+.rating .star {
+    color: #ddd;
+}
+
+.rating .star.active {
+    color: #ffd700;
+}
+
+.reviewer-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.review-images {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.review-images img {
+    border-radius: 5px;
+    transition: transform 0.3s ease;
+}
+
+.review-images img:hover {
+    transform: scale(1.05);
 }
 </style>
 

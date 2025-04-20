@@ -1,32 +1,70 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
-from .models import User, Product, Bidding, ProductReview, Orders, Seller, Transaction, ProductSize, UserProfile, Address
+from .models import User, Product, Bidding, ProductReview, Seller, Transaction, ProductSize, UserProfile, Address, Order
 from django.core.validators import MinValueValidator
 from decimal import Decimal
+from django.core.exceptions import ValidationError
 
-class UserRegistrationForm(forms.ModelForm):
-    password1 = forms.CharField(label='Password', widget=forms.PasswordInput)
-    password2 = forms.CharField(label='Confirm Password', widget=forms.PasswordInput)
+class CustomFileInput(forms.FileInput):
+    def get_context(self, name, value, attrs):
+        context = super().get_context(name, value, attrs)
+        context['widget']['attrs']['data-text'] = 'No file selected'
+        return context
+
+class UserRegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True)
-    mobile_number = forms.CharField(max_length=15, required=False)
-    address = forms.CharField(widget=forms.Textarea, required=False)
+    mobile_number = forms.CharField(max_length=15, required=True)
+    address = forms.CharField(widget=forms.Textarea, required=True)
+    city = forms.CharField(max_length=100, required=True)
+    state = forms.CharField(max_length=100, required=True)
+    pincode = forms.CharField(max_length=10, required=True)
 
     class Meta:
         model = User
-        fields = ('email', 'mobile_number', 'address')
+        fields = ('email', 'mobile_number', 'address', 'city', 'state', 'pincode', 'password1', 'password2')
 
-    def clean_password2(self):
-        password1 = self.cleaned_data.get('password1')
-        password2 = self.cleaned_data.get('password2')
-        if password1 and password2 and password1 != password2:
-            raise forms.ValidationError("Passwords don't match")
-        return password2
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if not email:
+            raise ValidationError("Email is required")
+        if User.objects.filter(email=email).exists():
+            raise ValidationError("This email is already registered")
+        return email
+
+    def clean_mobile_number(self):
+        mobile_number = self.cleaned_data.get('mobile_number')
+        if not mobile_number:
+            raise ValidationError("Mobile number is required")
+        if not mobile_number.isdigit():
+            raise ValidationError("Mobile number should contain only digits")
+        if len(mobile_number) < 10:
+            raise ValidationError("Mobile number should be at least 10 digits")
+        return mobile_number
+
+    def clean_pincode(self):
+        pincode = self.cleaned_data.get('pincode')
+        if not pincode:
+            raise ValidationError("Pincode is required")
+        if not pincode.isdigit():
+            raise ValidationError("Pincode should contain only digits")
+        if len(pincode) != 6:
+            raise ValidationError("Pincode should be 6 digits")
+        return pincode
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.set_password(self.cleaned_data['password1'])
+        user.email = self.cleaned_data['email']
         if commit:
             user.save()
+            # Create user profile with address information
+            UserProfile.objects.create(
+                user=user,
+                phone_number=self.cleaned_data['mobile_number'],
+                address=self.cleaned_data['address'],
+                city=self.cleaned_data['city'],
+                state=self.cleaned_data['state'],
+                pincode=self.cleaned_data['pincode']
+            )
         return user
 
 class ProductForm(forms.ModelForm):
@@ -77,25 +115,59 @@ class BiddingForm(forms.ModelForm):
         }
 
 class ReviewForm(forms.ModelForm):
+    rating = forms.ChoiceField(
+        choices=ProductReview.RATING_CHOICES,
+        widget=forms.RadioSelect(attrs={
+            'class': 'star-rating',
+            'style': 'display: none;'
+        })
+    )
+
     class Meta:
         model = ProductReview
-        fields = ['rating', 'review_text']
+        fields = ['rating', 'review_text', 'images']
         widgets = {
-            'rating': forms.RadioSelect(choices=ProductReview.RATING_CHOICES),
             'review_text': forms.Textarea(attrs={
                 'class': 'form-control',
                 'rows': 4,
                 'placeholder': 'Share your experience with this product...'
+            }),
+            'images': CustomFileInput(attrs={
+                'class': 'form-control',
+                'accept': 'image/*'
             })
         }
 
 class OrderForm(forms.ModelForm):
     class Meta:
-        model = Orders
-        fields = ['order_address']
+        model = Order
+        fields = ['full_name', 'phone_number', 'address_line1', 'address_line2', 'city', 'state', 'postal_code', 'country']
         widgets = {
-            'order_address': forms.Textarea(attrs={'rows': 4}),
+            'full_name': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
+            'phone_number': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
+            'address_line1': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
+            'address_line2': forms.TextInput(attrs={'class': 'form-control'}),
+            'city': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
+            'state': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
+            'postal_code': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
+            'country': forms.TextInput(attrs={'class': 'form-control', 'required': True}),
         }
+
+    def clean_phone_number(self):
+        phone_number = self.cleaned_data.get('phone_number')
+        if not phone_number.isdigit():
+            raise forms.ValidationError("Phone number should contain only digits")
+        if len(phone_number) < 10:
+            raise forms.ValidationError("Phone number should be at least 10 digits")
+        return phone_number
+
+    def clean_postal_code(self):
+        postal_code = self.cleaned_data.get('postal_code')
+        if not postal_code.isdigit():
+            raise forms.ValidationError("Postal code should contain only digits")
+        if len(postal_code) != 6:
+            raise forms.ValidationError("Postal code should be 6 digits")
+        return postal_code
 
 class SearchForm(forms.Form):
     query = forms.CharField(max_length=100, required=False)
@@ -143,7 +215,7 @@ class UserProfileForm(forms.ModelForm):
         fields = ['phone_number', 'profile_picture']
         widgets = {
             'phone_number': forms.TextInput(attrs={'class': 'form-control'}),
-            'profile_picture': forms.FileInput(attrs={'class': 'form-control'}),
+            'profile_picture': CustomFileInput(attrs={'class': 'form-control'}),
         }
 
 class AddressForm(forms.ModelForm):

@@ -33,3 +33,21 @@ img.save('bidbuygo/static/images/no-image.jpg')
 
 if __name__ == '__main__':
     create_placeholder_image() 
+# Save the image
+os.makedirs('bidbuygo/static/images', exist_ok=True)
+img.save('bidbuygo/static/images/no-image.jpg')
+
+if __name__ == '__main__':
+    create_placeholder_image() 
+# Save the image
+os.makedirs('bidbuygo/static/images', exist_ok=True)
+img.save('bidbuygo/static/images/no-image.jpg')
+
+if __name__ == '__main__':
+    create_placeholder_image() 
+# Save the image
+os.makedirs('bidbuygo/static/images', exist_ok=True)
+img.save('bidbuygo/static/images/no-image.jpg')
+
+if __name__ == '__main__':
+    create_placeholder_image() 
